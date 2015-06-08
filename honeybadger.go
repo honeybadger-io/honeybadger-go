@@ -1,9 +1,5 @@
 package honeybadger
 
-import (
-	"code.google.com/p/go-uuid/uuid"
-)
-
 type Config struct {
 	APIKey string
 }
@@ -17,7 +13,8 @@ func Configure(c Config) {
 }
 
 func Notify(err error) string {
-	return uuid.NewRandom().String()
+	notice := newNotice(err)
+	return notice.Token
 }
 
 func init() {
