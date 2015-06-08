@@ -18,6 +18,13 @@ Then add an import to your application code:
 import "github.com/honeybadger-io/honeybadger-go"
 ```
 
+Finally, configure your API key:
+
+```go
+	honeybadger.Configure(Config{APIKey: "your api key"})
+)
+```
+
 ## Manually reporting panics
 
 To report a panic manually, use `honeybadger.Notify`:
