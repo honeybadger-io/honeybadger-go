@@ -50,8 +50,8 @@ func newNotice(config *Config, err error) *Notice {
 		Error:           err,
 		Token:           uuid.NewRandom().String(),
 		ErrorMessage:    err.Error(),
-		EnvironmentName: "production",
-		Hostname:        "localhost",
+		EnvironmentName: config.EnvironmentName,
+		Hostname:        config.Hostname,
 	}
 
 	return &notice
