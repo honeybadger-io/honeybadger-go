@@ -29,6 +29,13 @@ func TestClientConfig(t *testing.T) {
 	}
 }
 
+func TestNewClientConfig(t *testing.T) {
+	client := NewClient(Config{APIKey: "lemmings"})
+	if client.Config.APIKey != "lemmings" {
+		t.Errorf("Expected NewClient to configure APIKey. expected=%#v actual=%#v", "lemmings", client.Config.APIKey)
+	}
+}
+
 func TestNotifyReturnsUUID(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)

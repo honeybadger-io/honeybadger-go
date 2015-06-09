@@ -41,19 +41,24 @@ func (c Client) Notify(err error) string {
 	return notice.Token
 }
 
+func (c1 Config) merge(c2 Config) Config {
+	if c2.APIKey != "" {
+		c1.APIKey = c2.APIKey
+	}
+	if c2.Env != "" {
+		c1.Env = c2.Env
+	}
+	if c2.Hostname != "" {
+		c1.Hostname = c2.Hostname
+	}
+	if c2.Endpoint != "" {
+		c1.Endpoint = c2.Endpoint
+	}
+	return c1
+}
+
 func Configure(c Config) {
-	if c.APIKey != "" {
-		config.APIKey = c.APIKey
-	}
-	if c.Env != "" {
-		config.Env = c.Env
-	}
-	if c.Hostname != "" {
-		config.Hostname = c.Hostname
-	}
-	if c.Endpoint != "" {
-		config.Endpoint = c.Endpoint
-	}
+	*client.Config = config.merge(c)
 }
 
 func Notify(err error) string {
@@ -83,7 +88,7 @@ func NewClient(config Config) Client {
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
 		Endpoint: "https://api.honeybadger.io",
-	}
+	}.merge(config)
 	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
 	return Client{
 		Config:  &defaultConfig,
