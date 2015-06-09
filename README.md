@@ -22,7 +22,6 @@ Finally, configure your API key:
 
 ```go
 	honeybadger.Configure(Config{APIKey: "your api key"})
-)
 ```
 
 ## Manually reporting panics
