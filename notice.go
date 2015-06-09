@@ -3,7 +3,17 @@ package honeybadger
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
+	"runtime"
+	"strconv"
 )
+
+const MaxFrames = 20
+
+type Frame struct {
+	Number string `json:"number"`
+	File   string `json:"file"`
+	Method string `json:"method"`
+}
 
 type hash map[string]interface{}
 
@@ -14,6 +24,7 @@ type Notice struct {
 	ErrorMessage string
 	Hostname     string
 	Env          string
+	Backtrace    []*Frame
 }
 
 func (n *Notice) asJSON() *hash {
@@ -27,7 +38,7 @@ func (n *Notice) asJSON() *hash {
 		"error": &hash{
 			"token":     n.Token,
 			"message":   n.ErrorMessage,
-			"backtrace": []map[string]interface{}{},
+			"backtrace": n.Backtrace,
 		},
 		"server": &hash{
 			"environment_name": n.Env,
@@ -44,6 +55,26 @@ func (n *Notice) toJSON() []byte {
 	}
 }
 
+func generateStack() (frames []*Frame) {
+	stack := make([]uintptr, MaxFrames)
+	length := runtime.Callers(4, stack[:])
+	for _, pc := range stack[:length] {
+		f := runtime.FuncForPC(pc)
+		if f == nil {
+			continue
+		}
+		file, line := f.FileLine(pc)
+		frame := &Frame{
+			File:   file,
+			Number: strconv.Itoa(line),
+			Method: f.Name(),
+		}
+		frames = append(frames, frame)
+	}
+
+	return
+}
+
 func newNotice(config *Config, err error) *Notice {
 	notice := Notice{
 		APIKey:       config.APIKey,
@@ -52,6 +83,7 @@ func newNotice(config *Config, err error) *Notice {
 		ErrorMessage: err.Error(),
 		Env:          config.Env,
 		Hostname:     config.Hostname,
+		Backtrace:    generateStack(),
 	}
 
 	return &notice
