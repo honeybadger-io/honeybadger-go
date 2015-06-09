@@ -25,7 +25,7 @@ honeybadger.Configure(honeybadger.Config{APIKey: "your api key"})
 ```
 
 You can also configure Honeybadger via environment variables. See
-[Configuration](./#configuration) for more information.
+[Configuration](#configuration) for more information.
 
 ## Manually reporting panics
 
