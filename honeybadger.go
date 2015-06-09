@@ -2,13 +2,30 @@ package honeybadger
 
 import "os"
 
+var (
+	config          Config
+	BackendInstance Backend
+	Notices         = Feature{"notices"}
+)
+
+type Feature struct {
+	Endpoint string
+}
+
 type Config struct {
 	APIKey   string
 	Env      string
 	Hostname string
+	Endpoint string
 }
 
-var config Config
+type Payload interface {
+	toJSON() []byte
+}
+
+type Backend interface {
+	Notify(feature Feature, payload Payload) error
+}
 
 func Configure(c Config) {
 	if c.APIKey != "" {
@@ -18,6 +35,9 @@ func Configure(c Config) {
 
 func Notify(err error) string {
 	notice := newNotice(&config, err)
+	if err := BackendInstance.Notify(Notices, notice); err != nil {
+		panic(err)
+	}
 	return notice.Token
 }
 
@@ -43,5 +63,7 @@ func init() {
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
+		Endpoint: "https://api.honeybadger.io",
 	}
+	BackendInstance = Server{URL: &config.Endpoint, APIKey: &config.APIKey}
 }

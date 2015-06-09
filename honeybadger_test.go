@@ -3,6 +3,9 @@ package honeybadger
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -20,6 +23,14 @@ func TestConfigure(t *testing.T) {
 }
 
 func TestNotifyReturnsUUID(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(201)
+		fmt.Fprintln(w, "{\"id\":\"87ded4b4-63cc-480a-b50c-8abe1376d972\"}")
+	}))
+	defer ts.Close()
+	APIKey := "badgers"
+	BackendInstance = Server{APIKey: &APIKey, URL: &ts.URL}
+
 	err := errors.New("Cobras!")
 	var res string
 	res = Notify(err)

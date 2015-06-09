@@ -2,7 +2,6 @@ package honeybadger
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
 
@@ -19,5 +18,5 @@ func TestNewNotice(t *testing.T) {
 func TestToJSON(t *testing.T) {
 	err := errors.New("Cobras!")
 	notice := newNotice(&config, err)
-	fmt.Println("JSON: %#v", notice.toJSON())
+	notice.toJSON()
 }

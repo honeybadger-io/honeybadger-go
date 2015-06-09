@@ -36,9 +36,9 @@ func (n *Notice) asJSON() *hash {
 	}
 }
 
-func (n *Notice) toJSON() string {
+func (n *Notice) toJSON() []byte {
 	if out, err := json.Marshal(n.asJSON()); err == nil {
-		return string(out)
+		return out
 	} else {
 		panic(err)
 	}
