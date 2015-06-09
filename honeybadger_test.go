@@ -22,6 +22,13 @@ func TestConfigure(t *testing.T) {
 	}
 }
 
+func TestClientConfig(t *testing.T) {
+	Configure(Config{APIKey: "badgers"})
+	if client.Config != config {
+		t.Errorf("Expected client configuration to match global config. expected=%#v actual=%#v", config, client.Config)
+	}
+}
+
 func TestNotifyReturnsUUID(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
@@ -29,7 +36,7 @@ func TestNotifyReturnsUUID(t *testing.T) {
 	}))
 	defer ts.Close()
 	APIKey := "badgers"
-	BackendInstance = Server{APIKey: &APIKey, URL: &ts.URL}
+	client.Backend = Server{APIKey: &APIKey, URL: &ts.URL}
 
 	err := errors.New("Cobras!")
 	var res string

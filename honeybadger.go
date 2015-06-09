@@ -3,9 +3,9 @@ package honeybadger
 import "os"
 
 var (
-	config          Config
-	BackendInstance Backend
-	Notices         = Feature{"notices"}
+	client  Client
+	config  *Config
+	Notices = Feature{"notices"}
 )
 
 type Config struct {
@@ -13,6 +13,7 @@ type Config struct {
 	Env      string
 	Hostname string
 	Endpoint string
+	Backend  Backend
 }
 
 type Feature struct {
@@ -25,6 +26,19 @@ type Payload interface {
 
 type Backend interface {
 	Notify(feature Feature, payload Payload) error
+}
+
+type Client struct {
+	Config  *Config
+	Backend Backend
+}
+
+func (c Client) Notify(err error) string {
+	notice := newNotice(c.Config, err)
+	if err := c.Backend.Notify(Notices, notice); err != nil {
+		panic(err)
+	}
+	return notice.Token
 }
 
 func Configure(c Config) {
@@ -43,11 +57,7 @@ func Configure(c Config) {
 }
 
 func Notify(err error) string {
-	notice := newNotice(&config, err)
-	if err := BackendInstance.Notify(Notices, notice); err != nil {
-		panic(err)
-	}
-	return notice.Token
+	return client.Notify(err)
 }
 
 func getEnv(key string) string {
@@ -67,12 +77,21 @@ func getHostname() string {
 	return hostname
 }
 
-func init() {
-	config = Config{
+func NewClient(config Config) Client {
+	defaultConfig := Config{
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
 		Endpoint: "https://api.honeybadger.io",
 	}
-	BackendInstance = Server{URL: &config.Endpoint, APIKey: &config.APIKey}
+	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
+	return Client{
+		Config:  &defaultConfig,
+		Backend: backend,
+	}
+}
+
+func init() {
+	client = NewClient(Config{})
+	config = client.Config
 }
