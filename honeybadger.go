@@ -3,9 +3,9 @@ package honeybadger
 import "os"
 
 type Config struct {
-	APIKey          string
-	EnvironmentName string
-	Hostname        string
+	APIKey   string
+	Env      string
+	Hostname string
 }
 
 var config Config
@@ -21,15 +21,27 @@ func Notify(err error) string {
 	return notice.Token
 }
 
-func init() {
-	hostname, err := os.Hostname()
-	if err != nil {
-		panic(err)
-	}
+func getEnv(key string) string {
+	return os.Getenv(key)
+}
 
+func getHostname() string {
+	var hostname string
+	hostname = getEnv("HONEYBADGER_HOSTNAME")
+	if hostname == "" {
+		if val, err := os.Hostname(); err == nil {
+			hostname = val
+		} else {
+			panic(err)
+		}
+	}
+	return hostname
+}
+
+func init() {
 	config = Config{
-		APIKey:          "",
-		EnvironmentName: "",
-		Hostname:        hostname,
+		APIKey:   getEnv("HONEYBADGER_API_KEY"),
+		Env:      getEnv("HONEYBADGER_ENV"),
+		Hostname: getHostname(),
 	}
 }

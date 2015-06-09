@@ -8,12 +8,12 @@ import (
 type hash map[string]interface{}
 
 type Notice struct {
-	APIKey          string
-	Error           error
-	Token           string
-	ErrorMessage    string
-	Hostname        string
-	EnvironmentName string
+	APIKey       string
+	Error        error
+	Token        string
+	ErrorMessage string
+	Hostname     string
+	Env          string
 }
 
 func (n *Notice) asJSON() *hash {
@@ -30,7 +30,7 @@ func (n *Notice) asJSON() *hash {
 			"backtrace": []map[string]interface{}{},
 		},
 		"server": &hash{
-			"environment_name": n.EnvironmentName,
+			"environment_name": n.Env,
 			"hostname":         n.Hostname,
 		},
 	}
@@ -46,12 +46,12 @@ func (n *Notice) toJSON() string {
 
 func newNotice(config *Config, err error) *Notice {
 	notice := Notice{
-		APIKey:          config.APIKey,
-		Error:           err,
-		Token:           uuid.NewRandom().String(),
-		ErrorMessage:    err.Error(),
-		EnvironmentName: config.EnvironmentName,
-		Hostname:        config.Hostname,
+		APIKey:       config.APIKey,
+		Error:        err,
+		Token:        uuid.NewRandom().String(),
+		ErrorMessage: err.Error(),
+		Env:          config.Env,
+		Hostname:     config.Hostname,
 	}
 
 	return &notice
