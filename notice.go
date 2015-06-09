@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
+	"reflect"
 	"runtime"
 	"strconv"
 )
@@ -22,6 +23,7 @@ type Notice struct {
 	Error        error
 	Token        string
 	ErrorMessage string
+	ErrorClass   string
 	Hostname     string
 	Env          string
 	Backtrace    []*Frame
@@ -38,6 +40,7 @@ func (n *Notice) asJSON() *hash {
 		"error": &hash{
 			"token":     n.Token,
 			"message":   n.ErrorMessage,
+			"class":     n.ErrorClass,
 			"backtrace": n.Backtrace,
 		},
 		"server": &hash{
@@ -81,6 +84,7 @@ func newNotice(config *Config, err error) *Notice {
 		Error:        err,
 		Token:        uuid.NewRandom().String(),
 		ErrorMessage: err.Error(),
+		ErrorClass:   reflect.TypeOf(err).String(),
 		Env:          config.Env,
 		Hostname:     config.Hostname,
 		Backtrace:    generateStack(),
