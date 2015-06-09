@@ -60,7 +60,7 @@ func (n *Notice) toJSON() []byte {
 
 func generateStack() (frames []*Frame) {
 	stack := make([]uintptr, MaxFrames)
-	length := runtime.Callers(4, stack[:])
+	length := runtime.Callers(5, stack[:])
 	for _, pc := range stack[:length] {
 		f := runtime.FuncForPC(pc)
 		if f == nil {
