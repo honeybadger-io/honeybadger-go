@@ -8,7 +8,7 @@ import (
 
 func TestNewNotice(t *testing.T) {
 	err := errors.New("Cobras!")
-	notice := newNotice(err)
+	notice := newNotice(&config, err)
 	if notice.ErrorMessage != "Cobras!" {
 		t.Errorf("Unexpected value for notice.ErrorMessage. expected=%#v result=%#v", "Cobras!", notice.ErrorMessage)
 	} else if notice.Error != err {
@@ -18,6 +18,6 @@ func TestNewNotice(t *testing.T) {
 
 func TestToJSON(t *testing.T) {
 	err := errors.New("Cobras!")
-	notice := newNotice(err)
+	notice := newNotice(&config, err)
 	fmt.Println("JSON: %#v", notice.toJSON())
 }

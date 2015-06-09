@@ -13,7 +13,7 @@ func Configure(c Config) {
 }
 
 func Notify(err error) string {
-	notice := newNotice(err)
+	notice := newNotice(&config, err)
 	return notice.Token
 }
 
