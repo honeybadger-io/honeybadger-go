@@ -8,14 +8,14 @@ var (
 	Notices         = Feature{"notices"}
 )
 
-type Feature struct {
-	Endpoint string
-}
-
 type Config struct {
 	APIKey   string
 	Env      string
 	Hostname string
+	Endpoint string
+}
+
+type Feature struct {
 	Endpoint string
 }
 
@@ -30,6 +30,15 @@ type Backend interface {
 func Configure(c Config) {
 	if c.APIKey != "" {
 		config.APIKey = c.APIKey
+	}
+	if c.Env != "" {
+		config.Env = c.Env
+	}
+	if c.Hostname != "" {
+		config.Hostname = c.Hostname
+	}
+	if c.Endpoint != "" {
+		config.Endpoint = c.Endpoint
 	}
 }
 
