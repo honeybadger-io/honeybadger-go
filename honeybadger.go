@@ -33,10 +33,10 @@ type Client struct {
 	Backend Backend
 }
 
-func (c Client) Notify(err error) string {
-	notice := newNotice(c.Config, err)
-	if err := c.Backend.Notify(Notices, notice); err != nil {
-		panic(err)
+func (c Client) Notify(err interface{}) string {
+	notice := newNotice(c.Config, newError(err, 1))
+	if notify_err := c.Backend.Notify(Notices, notice); notify_err != nil {
+		panic(notify_err)
 	}
 	return notice.Token
 }
@@ -61,8 +61,8 @@ func Configure(c Config) {
 	*client.Config = config.merge(c)
 }
 
-func Notify(err error) string {
-	return client.Notify(err)
+func Notify(err interface{}) string {
+	return client.Notify(newError(err, 2))
 }
 
 func getEnv(key string) string {
@@ -93,6 +93,13 @@ func NewClient(config Config) Client {
 	return Client{
 		Config:  &defaultConfig,
 		Backend: backend,
+	}
+}
+
+func Monitor() {
+	if err := recover(); err != nil {
+		client.Notify(newError(err, 2))
+		panic(err)
 	}
 }
 
