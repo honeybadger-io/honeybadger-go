@@ -15,10 +15,14 @@ type Client struct {
 
 func (c Client) Notify(err interface{}) string {
 	notice := newNotice(c.Config, newError(err, 1))
-	if notify_err := c.Backend.Notify(Notices, notice); notify_err != nil {
-		panic(notify_err)
-	}
+	go c.notify(notice)
 	return notice.Token
+}
+
+func (c Client) notify(notice *Notice) {
+	if err := c.Backend.Notify(Notices, notice); err != nil {
+		panic(err)
+	}
 }
 
 func NewClient(config Config) Client {
