@@ -2,10 +2,17 @@ package honeybadger
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
+)
+
+var (
+	RateExceeded    = errors.New("Rate exceeded: slow down!")
+	PaymentRequired = errors.New("Payment required: expired trial or credit card?")
+	Unauthorized    = errors.New("Unauthorized: bad API key?")
 )
 
 type Server struct {
@@ -38,12 +45,19 @@ func (s Server) Notify(feature Feature, payload Payload) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
+	switch resp.StatusCode {
+	case 201:
+		return nil
+	case 429, 503:
+		return RateExceeded
+	case 402:
+		return PaymentRequired
+	case 403:
+		return Unauthorized
+	default:
 		return fmt.Errorf(
 			"request failed status=%d expected=%d",
 			resp.StatusCode,
 			http.StatusCreated)
 	}
-
-	return nil
 }
