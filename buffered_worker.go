@@ -1,28 +1,25 @@
 package honeybadger
 
-import (
-	"fmt"
-	"log"
-)
+import "fmt"
 
 var (
 	WorkerOverflowError = fmt.Errorf("The worker is full; this envelope will be dropped.")
 )
 
-func newBufferedWorker() BufferedWorker {
+func newBufferedWorker(config *Config) BufferedWorker {
 	worker := BufferedWorker{ch: make(chan Envelope, 100)}
 	go func() {
 		for w := range worker.ch {
 			work := func() error {
 				defer func() {
 					if err := recover(); err != nil {
-						worker.log.Printf("worker recovered from panic: %v\n", err)
+						config.Logger.Printf("worker recovered from panic: %v\n", err)
 					}
 				}()
 				return w()
 			}
 			if err := work(); err != nil {
-				worker.log.Printf("worker processing error: %v\n", err)
+				config.Logger.Printf("worker processing error: %v\n", err)
 			}
 		}
 	}()
@@ -30,8 +27,7 @@ func newBufferedWorker() BufferedWorker {
 }
 
 type BufferedWorker struct {
-	ch  chan Envelope
-	log *log.Logger
+	ch chan Envelope
 }
 
 func (w BufferedWorker) Push(work Envelope) error {

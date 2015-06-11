@@ -1,6 +1,13 @@
 package honeybadger
 
-import "os"
+import (
+	"log"
+	"os"
+)
+
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
 
 type Config struct {
 	APIKey   string
@@ -8,6 +15,7 @@ type Config struct {
 	Env      string
 	Hostname string
 	Endpoint string
+	Logger   Logger
 }
 
 func (c1 Config) merge(c2 Config) Config {
@@ -23,17 +31,23 @@ func (c1 Config) merge(c2 Config) Config {
 	if c2.Endpoint != "" {
 		c1.Endpoint = c2.Endpoint
 	}
+	if c2.Logger != nil {
+		c1.Logger = c2.Logger
+	}
 	return c1
 }
 
 func newConfig() Config {
-	return Config{
+	config := Config{
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Root:     getPWD(),
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
 		Endpoint: "https://api.honeybadger.io",
+		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 	}
+
+	return config
 }
 
 // Private helper methods

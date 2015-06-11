@@ -1,10 +1,5 @@
 package honeybadger
 
-import (
-	"log"
-	"os"
-)
-
 type Payload interface {
 	toJSON() []byte
 }
@@ -15,7 +10,6 @@ type Backend interface {
 
 type Client struct {
 	Config  *Config
-	Logger  *log.Logger
 	Backend Backend
 	worker  Worker
 }
@@ -38,19 +32,12 @@ func (c Client) Notify(err interface{}) string {
 func NewClient(config Config) Client {
 	defaultConfig := newConfig().merge(config)
 	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
-	logger := newLogger(&defaultConfig)
-	worker := newBufferedWorker()
-	worker.log = logger
+	worker := newBufferedWorker(&defaultConfig)
 	client := Client{
 		Config:  &defaultConfig,
-		Logger:  logger,
 		Backend: backend,
 		worker:  worker,
 	}
 
 	return client
-}
-
-func newLogger(config *Config) *log.Logger {
-	return log.New(os.Stderr, "[Honeybadger] ", log.Lshortfile)
 }
