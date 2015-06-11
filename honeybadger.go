@@ -53,3 +53,16 @@ func getHostname() string {
 	}
 	return hostname
 }
+
+func getPWD() string {
+	var pwd string
+	pwd = getEnv("HONEYBADGER_ROOT")
+	if pwd == "" {
+		if val, err := os.Getwd(); err == nil {
+			pwd = val
+		} else {
+			panic(err)
+		}
+	}
+	return pwd
+}

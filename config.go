@@ -2,6 +2,7 @@ package honeybadger
 
 type Config struct {
 	APIKey   string
+	Root     string
 	Env      string
 	Hostname string
 	Endpoint string
