@@ -42,8 +42,7 @@ func TestNotifyReturnsUUID(t *testing.T) {
 		fmt.Fprintln(w, "{\"id\":\"87ded4b4-63cc-480a-b50c-8abe1376d972\"}")
 	}))
 	defer ts.Close()
-	APIKey := "badgers"
-	client.Backend = Server{APIKey: &APIKey, URL: &ts.URL}
+	Configure(Config{APIKey: "badgers", Endpoint: ts.URL})
 
 	err := errors.New("Cobras!")
 	var res string

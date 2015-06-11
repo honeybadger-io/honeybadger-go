@@ -16,6 +16,7 @@ type Config struct {
 	Hostname string
 	Endpoint string
 	Logger   Logger
+	Backend  Backend
 }
 
 func (c1 Config) merge(c2 Config) Config {
@@ -37,10 +38,13 @@ func (c1 Config) merge(c2 Config) Config {
 	if c2.Logger != nil {
 		c1.Logger = c2.Logger
 	}
+	if c2.Backend != nil {
+		c1.Backend = c2.Backend
+	}
 	return c1
 }
 
-func newConfig() Config {
+func newConfig(c Config) *Config {
 	config := Config{
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Root:     getPWD(),
@@ -48,9 +52,13 @@ func newConfig() Config {
 		Hostname: getHostname(),
 		Endpoint: "https://api.honeybadger.io",
 		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
+	}.merge(c)
+
+	if config.Backend == nil {
+		config.Backend = Server{URL: &config.Endpoint, APIKey: &config.APIKey}
 	}
 
-	return config
+	return &config
 }
 
 // Private helper methods

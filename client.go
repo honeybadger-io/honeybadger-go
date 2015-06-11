@@ -9,9 +9,8 @@ type Backend interface {
 }
 
 type Client struct {
-	Config  *Config
-	Backend Backend
-	worker  Worker
+	Config *Config
+	worker Worker
 }
 
 func (c Client) Flush() {
@@ -21,7 +20,7 @@ func (c Client) Flush() {
 func (c Client) Notify(err interface{}) string {
 	notice := newNotice(c.Config, newError(err, 1))
 	c.worker.Push(func() error {
-		if err := c.Backend.Notify(Notices, notice); err != nil {
+		if err := c.Config.Backend.Notify(Notices, notice); err != nil {
 			return err
 		}
 		return nil
@@ -29,14 +28,12 @@ func (c Client) Notify(err interface{}) string {
 	return notice.Token
 }
 
-func NewClient(config Config) Client {
-	defaultConfig := newConfig().merge(config)
-	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
-	worker := newBufferedWorker(&defaultConfig)
+func NewClient(c Config) Client {
+	config := newConfig(c)
+	worker := newBufferedWorker(config)
 	client := Client{
-		Config:  &defaultConfig,
-		Backend: backend,
-		worker:  worker,
+		Config: config,
+		worker: worker,
 	}
 
 	return client
