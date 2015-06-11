@@ -5,7 +5,6 @@ type Config struct {
 	Env      string
 	Hostname string
 	Endpoint string
-	Backend  Backend
 }
 
 func (c1 Config) merge(c2 Config) Config {
