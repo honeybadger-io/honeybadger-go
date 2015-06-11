@@ -2,6 +2,10 @@ package honeybadger
 
 import "fmt"
 
+var (
+	WorkerOverflowError = fmt.Errorf("The worker is full; this envelope will be dropped.")
+)
+
 func newBufferedWorker() Worker {
 	worker := make(BufferedWorker, 100)
 	go func() {
@@ -29,7 +33,7 @@ func (worker BufferedWorker) Push(work Envelope) error {
 	case worker <- work:
 		return nil
 	default:
-		return fmt.Errorf("the channel is full.")
+		return WorkerOverflowError
 	}
 }
 
