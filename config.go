@@ -47,8 +47,6 @@ func getHostname() string {
 	if hostname == "" {
 		if val, err := os.Hostname(); err == nil {
 			hostname = val
-		} else {
-			panic(err)
 		}
 	}
 	return hostname
@@ -60,8 +58,6 @@ func getPWD() string {
 	if pwd == "" {
 		if val, err := os.Getwd(); err == nil {
 			pwd = val
-		} else {
-			panic(err)
 		}
 	}
 	return pwd
