@@ -30,12 +30,11 @@ func (c Client) Notify(err interface{}) string {
 }
 
 func NewClient(config Config) Client {
-	defaultConfig := newConfig()
-	defaultConfig.merge(config)
+	defaultConfig := newConfig().merge(config)
 	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
-	worker := newBufferedWorker(defaultConfig)
+	worker := newBufferedWorker(&defaultConfig)
 	client := Client{
-		Config:  defaultConfig,
+		Config:  &defaultConfig,
 		Backend: backend,
 		worker:  worker,
 	}

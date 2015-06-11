@@ -18,7 +18,7 @@ type Config struct {
 	Logger   Logger
 }
 
-func (c1 *Config) merge(c2 Config) Config {
+func (c1 Config) merge(c2 Config) Config {
 	if c2.APIKey != "" {
 		c1.APIKey = c2.APIKey
 	}
@@ -37,10 +37,10 @@ func (c1 *Config) merge(c2 Config) Config {
 	if c2.Logger != nil {
 		c1.Logger = c2.Logger
 	}
-	return *c1
+	return c1
 }
 
-func newConfig() *Config {
+func newConfig() Config {
 	config := Config{
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Root:     getPWD(),
@@ -50,7 +50,7 @@ func newConfig() *Config {
 		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 	}
 
-	return &config
+	return config
 }
 
 // Private helper methods

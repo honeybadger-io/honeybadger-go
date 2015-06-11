@@ -10,7 +10,7 @@ func (l *TestLogger) Printf(format string, v ...interface{}) {
 func TestMergeConfig(t *testing.T) {
 	config := Config{}
 	logger := &TestLogger{}
-	config.merge(Config{
+	config = config.merge(Config{
 		Logger: logger,
 		Root:   "/tmp/foo",
 	})
