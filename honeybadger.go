@@ -1,7 +1,5 @@
 package honeybadger
 
-import "os"
-
 var (
 	client  Client
 	config  *Config
@@ -34,35 +32,4 @@ func Flush() {
 func init() {
 	client = NewClient(Config{})
 	config = client.Config
-}
-
-// Private helper methods
-func getEnv(key string) string {
-	return os.Getenv(key)
-}
-
-func getHostname() string {
-	var hostname string
-	hostname = getEnv("HONEYBADGER_HOSTNAME")
-	if hostname == "" {
-		if val, err := os.Hostname(); err == nil {
-			hostname = val
-		} else {
-			panic(err)
-		}
-	}
-	return hostname
-}
-
-func getPWD() string {
-	var pwd string
-	pwd = getEnv("HONEYBADGER_ROOT")
-	if pwd == "" {
-		if val, err := os.Getwd(); err == nil {
-			pwd = val
-		} else {
-			panic(err)
-		}
-	}
-	return pwd
 }

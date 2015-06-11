@@ -30,13 +30,7 @@ func (c Client) Notify(err interface{}) string {
 }
 
 func NewClient(config Config) Client {
-	defaultConfig := Config{
-		APIKey:   getEnv("HONEYBADGER_API_KEY"),
-		Root:     getPWD(),
-		Env:      getEnv("HONEYBADGER_ENV"),
-		Hostname: getHostname(),
-		Endpoint: "https://api.honeybadger.io",
-	}.merge(config)
+	defaultConfig := newConfig().merge(config)
 	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
 	client := Client{
 		Config:  &defaultConfig,
