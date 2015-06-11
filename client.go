@@ -11,18 +11,22 @@ type Backend interface {
 type Client struct {
 	Config  *Config
 	Backend Backend
+	worker  Worker
+}
+
+func (c Client) Flush() {
+	c.worker.Flush()
 }
 
 func (c Client) Notify(err interface{}) string {
 	notice := newNotice(c.Config, newError(err, 1))
-	go c.notify(notice)
+	c.worker.Push(func() error {
+		if err := c.Backend.Notify(Notices, notice); err != nil {
+			return err
+		}
+		return nil
+	})
 	return notice.Token
-}
-
-func (c Client) notify(notice *Notice) {
-	if err := c.Backend.Notify(Notices, notice); err != nil {
-		panic(err)
-	}
 }
 
 func NewClient(config Config) Client {
@@ -33,8 +37,11 @@ func NewClient(config Config) Client {
 		Endpoint: "https://api.honeybadger.io",
 	}.merge(config)
 	backend := Server{URL: &defaultConfig.Endpoint, APIKey: &defaultConfig.APIKey}
-	return Client{
+	client := Client{
 		Config:  &defaultConfig,
 		Backend: backend,
+		worker:  newBufferedWorker(),
 	}
+
+	return client
 }

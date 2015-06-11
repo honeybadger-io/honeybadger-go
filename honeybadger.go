@@ -27,6 +27,10 @@ func Monitor() {
 	}
 }
 
+func Flush() {
+	client.Flush()
+}
+
 func init() {
 	client = NewClient(Config{})
 	config = client.Config
