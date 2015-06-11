@@ -22,6 +22,9 @@ func (c1 Config) merge(c2 Config) Config {
 	if c2.APIKey != "" {
 		c1.APIKey = c2.APIKey
 	}
+	if c2.Root != "" {
+		c1.Root = c2.Root
+	}
 	if c2.Env != "" {
 		c1.Env = c2.Env
 	}
