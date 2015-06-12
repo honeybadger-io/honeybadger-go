@@ -32,7 +32,7 @@ func (c *Client) Notify(err interface{}) string {
 	return notice.Token
 }
 
-func NewClient(c Configuration) *Client {
+func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
 	client := Client{

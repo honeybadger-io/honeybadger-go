@@ -30,6 +30,6 @@ func Flush() {
 }
 
 func init() {
-	client = NewClient(Configuration{})
+	client = New(Configuration{})
 	Config = client.Config
 }
