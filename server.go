@@ -15,7 +15,7 @@ var (
 	Unauthorized    = errors.New("Unauthorized: bad API key?")
 )
 
-func newServerBackend(config *Config) Server {
+func newServerBackend(config *Configuration) Server {
 	return Server{
 		URL:    &config.Endpoint,
 		APIKey: &config.APIKey,

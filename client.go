@@ -9,11 +9,11 @@ type Backend interface {
 }
 
 type Client struct {
-	Config *Config
+	Config *Configuration
 	worker Worker
 }
 
-func (client *Client) Configure(config Config) {
+func (client *Client) Configure(config Configuration) {
 	*client.Config = client.Config.merge(config)
 }
 
@@ -32,7 +32,7 @@ func (c *Client) Notify(err interface{}) string {
 	return notice.Token
 }
 
-func NewClient(c Config) *Client {
+func NewClient(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
 	client := Client{

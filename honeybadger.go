@@ -2,7 +2,7 @@ package honeybadger
 
 var (
 	client  *Client
-	config  *Config
+	Config  *Configuration
 	Notices = Feature{"notices"}
 )
 
@@ -10,7 +10,7 @@ type Feature struct {
 	Endpoint string
 }
 
-func Configure(c Config) {
+func Configure(c Configuration) {
 	client.Configure(c)
 }
 
@@ -30,6 +30,6 @@ func Flush() {
 }
 
 func init() {
-	client = NewClient(Config{})
-	config = client.Config
+	client = NewClient(Configuration{})
+	Config = client.Config
 }

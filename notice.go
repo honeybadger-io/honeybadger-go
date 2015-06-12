@@ -47,7 +47,7 @@ func (n *Notice) toJSON() []byte {
 	}
 }
 
-func newNotice(config *Config, err Error) *Notice {
+func newNotice(config *Configuration, err Error) *Notice {
 	notice := Notice{
 		APIKey:       config.APIKey,
 		Error:        err,

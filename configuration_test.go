@@ -13,10 +13,10 @@ func (l *TestBackend) Notify(f Feature, p Payload) (err error) {
 }
 
 func TestMergeConfig(t *testing.T) {
-	config := Config{}
+	config := Configuration{}
 	logger := &TestLogger{}
 	backend := &TestBackend{}
-	config = config.merge(Config{
+	config = config.merge(Configuration{
 		Logger:  logger,
 		Backend: backend,
 		Root:    "/tmp/foo",

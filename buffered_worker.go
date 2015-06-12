@@ -6,7 +6,7 @@ var (
 	WorkerOverflowError = fmt.Errorf("The worker is full; this envelope will be dropped.")
 )
 
-func newBufferedWorker(config *Config) BufferedWorker {
+func newBufferedWorker(config *Configuration) BufferedWorker {
 	worker := BufferedWorker{ch: make(chan Envelope, 100)}
 	go func() {
 		for w := range worker.ch {

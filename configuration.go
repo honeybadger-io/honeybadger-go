@@ -9,7 +9,7 @@ type Logger interface {
 	Printf(format string, v ...interface{})
 }
 
-type Config struct {
+type Configuration struct {
 	APIKey   string
 	Root     string
 	Env      string
@@ -19,7 +19,7 @@ type Config struct {
 	Backend  Backend
 }
 
-func (c1 Config) merge(c2 Config) Config {
+func (c1 Configuration) merge(c2 Configuration) Configuration {
 	if c2.APIKey != "" {
 		c1.APIKey = c2.APIKey
 	}
@@ -44,8 +44,8 @@ func (c1 Config) merge(c2 Config) Config {
 	return c1
 }
 
-func newConfig(c Config) *Config {
-	config := Config{
+func newConfig(c Configuration) *Configuration {
+	config := Configuration{
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Root:     getPWD(),
 		Env:      getEnv("HONEYBADGER_ENV"),

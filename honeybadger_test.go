@@ -10,15 +10,15 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
-	if config.APIKey != "" {
-		t.Errorf("Expected config.APIKey to be empty by default. expected=%#v result=%#v", "", config.APIKey)
+	if Config.APIKey != "" {
+		t.Errorf("Expected config.APIKey to be empty by default. expected=%#v result=%#v", "", Config.APIKey)
 	}
 }
 
 func TestConfigure(t *testing.T) {
-	Configure(Config{APIKey: "badgers"})
-	if config.APIKey != "badgers" {
-		t.Errorf("Expected Configure to override config.APIKey. expected=%#v actual=%#v", "badgers", config.APIKey)
+	Configure(Configuration{APIKey: "badgers"})
+	if Config.APIKey != "badgers" {
+		t.Errorf("Expected Configure to override config.APIKey. expected=%#v actual=%#v", "badgers", Config.APIKey)
 	}
 }
 
@@ -28,7 +28,7 @@ func TestNotifyReturnsUUID(t *testing.T) {
 		fmt.Fprintln(w, "{\"id\":\"87ded4b4-63cc-480a-b50c-8abe1376d972\"}")
 	}))
 	defer ts.Close()
-	Configure(Config{APIKey: "badgers", Endpoint: ts.URL})
+	Configure(Configuration{APIKey: "badgers", Endpoint: ts.URL})
 
 	err := errors.New("Cobras!")
 	var res string
