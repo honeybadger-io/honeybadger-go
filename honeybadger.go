@@ -1,7 +1,7 @@
 package honeybadger
 
 var (
-	client  Client
+	client  *Client
 	config  *Config
 	Notices = Feature{"notices"}
 )

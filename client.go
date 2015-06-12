@@ -28,7 +28,7 @@ func (c Client) Notify(err interface{}) string {
 	return notice.Token
 }
 
-func NewClient(c Config) Client {
+func NewClient(c Config) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
 	client := Client{
@@ -36,5 +36,5 @@ func NewClient(c Config) Client {
 		worker: worker,
 	}
 
-	return client
+	return &client
 }
