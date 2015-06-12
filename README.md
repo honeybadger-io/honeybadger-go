@@ -37,6 +37,17 @@ if err != nil {
 }
 ```
 
+## Creating a new client
+
+In the same way that the log library provides a predefined "standard" logger,
+honeybadger defines a standard client which may be access directly via
+`honeybadger`. A new client may also be created by calling `honeybadger.New`:
+
+```go
+hb := honeybadger.New(honeybadger.Configuration{APIKey: "some other api key"})
+hb.Notify("This error was reported by an alternate client.")
+```
+
 ## Configuration
 
 All available config options will eventually be listed here.
