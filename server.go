@@ -21,18 +21,24 @@ func newServerBackend(config *Configuration) Server {
 		APIKey: &config.APIKey,
 		Client: &http.Client{
 			Transport: http.DefaultTransport,
-			Timeout:   3 * time.Second,
+			Timeout:   config.Timeout,
 		},
+		Timeout: &config.Timeout,
 	}
 }
 
 type Server struct {
-	APIKey *string
-	URL    *string
-	Client *http.Client
+	APIKey  *string
+	URL     *string
+	Timeout *time.Duration
+	Client  *http.Client
 }
 
 func (s Server) Notify(feature Feature, payload Payload) error {
+	// Copy the value from the pointer in case it has changed in the
+	// configuration.
+	s.Client.Timeout = *s.Timeout
+
 	url, err := url.Parse(*s.URL)
 	if err != nil {
 		return err

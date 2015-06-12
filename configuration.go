@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"log"
 	"os"
+	"time"
 )
 
 type Logger interface {
@@ -15,6 +16,7 @@ type Configuration struct {
 	Env      string
 	Hostname string
 	Endpoint string
+	Timeout  time.Duration
 	Logger   Logger
 	Backend  Backend
 }
@@ -35,6 +37,9 @@ func (c1 Configuration) merge(c2 Configuration) Configuration {
 	if c2.Endpoint != "" {
 		c1.Endpoint = c2.Endpoint
 	}
+	if c2.Timeout > 0 {
+		c1.Timeout = c2.Timeout
+	}
 	if c2.Logger != nil {
 		c1.Logger = c2.Logger
 	}
@@ -51,6 +56,7 @@ func newConfig(c Configuration) *Configuration {
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
 		Endpoint: "https://api.honeybadger.io",
+		Timeout:  3 * time.Second,
 		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 	}.merge(c)
 
