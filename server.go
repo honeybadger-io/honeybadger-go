@@ -15,16 +15,24 @@ var (
 	Unauthorized    = errors.New("Unauthorized: bad API key?")
 )
 
+func newServerBackend(config *Config) Server {
+	return Server{
+		URL:    &config.Endpoint,
+		APIKey: &config.APIKey,
+		Client: &http.Client{
+			Transport: http.DefaultTransport,
+			Timeout:   3 * time.Second,
+		},
+	}
+}
+
 type Server struct {
 	APIKey *string
 	URL    *string
+	Client *http.Client
 }
 
 func (s Server) Notify(feature Feature, payload Payload) error {
-	client := &http.Client{
-		Timeout: 3 * time.Second,
-	}
-
 	url, err := url.Parse(*s.URL)
 	if err != nil {
 		return err
@@ -39,7 +47,7 @@ func (s Server) Notify(feature Feature, payload Payload) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := s.Client.Do(req)
 	if err != nil {
 		return err
 	}

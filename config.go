@@ -55,7 +55,7 @@ func newConfig(c Config) *Config {
 	}.merge(c)
 
 	if config.Backend == nil {
-		config.Backend = Server{URL: &config.Endpoint, APIKey: &config.APIKey}
+		config.Backend = newServerBackend(&config)
 	}
 
 	return &config
