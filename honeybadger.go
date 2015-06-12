@@ -11,7 +11,7 @@ type Feature struct {
 }
 
 func Configure(c Config) {
-	*client.Config = config.merge(c)
+	client.Configure(c)
 }
 
 func Notify(err interface{}) string {

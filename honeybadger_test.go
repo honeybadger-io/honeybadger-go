@@ -22,20 +22,6 @@ func TestConfigure(t *testing.T) {
 	}
 }
 
-func TestClientConfig(t *testing.T) {
-	Configure(Config{APIKey: "badgers"})
-	if client.Config != config {
-		t.Errorf("Expected client configuration to match global config. expected=%#v actual=%#v", config, client.Config)
-	}
-}
-
-func TestNewClientConfig(t *testing.T) {
-	client := NewClient(Config{APIKey: "lemmings"})
-	if client.Config.APIKey != "lemmings" {
-		t.Errorf("Expected NewClient to configure APIKey. expected=%#v actual=%#v", "lemmings", client.Config.APIKey)
-	}
-}
-
 func TestNotifyReturnsUUID(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)

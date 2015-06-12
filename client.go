@@ -13,11 +13,15 @@ type Client struct {
 	worker Worker
 }
 
-func (c Client) Flush() {
+func (client *Client) Configure(config Config) {
+	*client.Config = client.Config.merge(config)
+}
+
+func (c *Client) Flush() {
 	c.worker.Flush()
 }
 
-func (c Client) Notify(err interface{}) string {
+func (c *Client) Notify(err interface{}) string {
 	notice := newNotice(c.Config, newError(err, 1))
 	c.worker.Push(func() error {
 		if err := c.Config.Backend.Notify(Notices, notice); err != nil {
