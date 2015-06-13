@@ -15,8 +15,8 @@ var (
 	Unauthorized    = errors.New("Unauthorized: bad API key?")
 )
 
-func newServerBackend(config *Configuration) Server {
-	return Server{
+func newServerBackend(config *Configuration) *server {
+	return &server{
 		URL:    &config.Endpoint,
 		APIKey: &config.APIKey,
 		Client: &http.Client{
@@ -27,14 +27,14 @@ func newServerBackend(config *Configuration) Server {
 	}
 }
 
-type Server struct {
+type server struct {
 	APIKey  *string
 	URL     *string
 	Timeout *time.Duration
 	Client  *http.Client
 }
 
-func (s Server) Notify(feature Feature, payload Payload) error {
+func (s *server) Notify(feature Feature, payload Payload) error {
 	// Copy the value from the pointer in case it has changed in the
 	// configuration.
 	s.Client.Timeout = *s.Timeout

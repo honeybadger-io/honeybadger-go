@@ -19,7 +19,7 @@ func TestConfigureClient(t *testing.T) {
 
 func TestConfigureClientEndpoint(t *testing.T) {
 	client := New(Configuration{})
-	backend := client.Config.Backend.(Server)
+	backend := client.Config.Backend.(*server)
 	client.Configure(Configuration{Endpoint: "http://localhost:3000"})
 	if *backend.URL != "http://localhost:3000" {
 		t.Errorf("Expected Configure to update backend. expected=%#v actual=%#v", "http://localhost:3000", backend.URL)
