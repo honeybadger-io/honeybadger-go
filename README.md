@@ -50,7 +50,19 @@ hb.Notify("This error was reported by an alternate client.")
 
 ## Configuration
 
-All available config options will eventually be listed here.
+The following options are available through `honeybadger.Configuration`:
+
+|  Name | Type | Default | Example | Environment variable |
+| ----- | ---- | ------- | ------- | -------------------- |
+| APIKey | `string` | `""` | `"badger01"` | `HONEYBADGER_API_KEY` |
+| Root | `string` | The current working directory | "/path/to/project" | `HONEYBADGER_ROOT` |
+| Env | `string` | `""` | `"production"` | `HONEYBADGER_ENV` |
+| Hostname | `string` | The hostname of the current server. | `"badger01"` | `HONEYBADGER_HOSTNAME` |
+| Endpoint | `string` | `"https://api.honeybadger.io"` | `"https://honeybadger.example.com/"` | `HONEYBADGER_ENDPOINT` |
+| Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` |
+| Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
+| Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
+
 
 ## Changelog
 
