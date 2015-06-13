@@ -31,3 +31,12 @@ func TestMergeConfig(t *testing.T) {
 		t.Errorf("Expected config to merge root expected=%#v actual=%#v", "/tmp/foo", config.Root)
 	}
 }
+
+func TestReplaceConfigPointer(t *testing.T) {
+	config := Configuration{Root: "/tmp/foo"}
+	root := &config.Root
+	config = Configuration{Root: "/tmp/bar"}
+	if *root != "/tmp/bar" {
+		t.Errorf("Expected merged config to update pointer expected=%#v actual=%#v", "/tmp/bar", *root)
+	}
+}

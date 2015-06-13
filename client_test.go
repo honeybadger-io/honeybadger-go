@@ -16,3 +16,12 @@ func TestConfigureClient(t *testing.T) {
 		t.Errorf("Expected Configure to override config.APIKey. expected=%#v actual=%#v", "badgers", client.Config.APIKey)
 	}
 }
+
+func TestConfigureClientEndpoint(t *testing.T) {
+	client := New(Configuration{})
+	backend := client.Config.Backend.(Server)
+	client.Configure(Configuration{Endpoint: "http://localhost:3000"})
+	if *backend.URL != "http://localhost:3000" {
+		t.Errorf("Expected Configure to update backend. expected=%#v actual=%#v", "http://localhost:3000", backend.URL)
+	}
+}
