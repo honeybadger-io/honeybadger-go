@@ -1,8 +1,8 @@
 package honeybadger
 
-type Envelope func() error
+type envelope func() error
 
-type Worker interface {
-	Push(Envelope) error
+type worker interface {
+	Push(envelope) error
 	Flush() error
 }

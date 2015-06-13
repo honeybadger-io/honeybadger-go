@@ -7,7 +7,7 @@ var (
 )
 
 func newBufferedWorker(config *Configuration) *bufferedWorker {
-	worker := &bufferedWorker{ch: make(chan Envelope, 100)}
+	worker := &bufferedWorker{ch: make(chan envelope, 100)}
 	go func() {
 		for w := range worker.ch {
 			work := func() error {
@@ -27,10 +27,10 @@ func newBufferedWorker(config *Configuration) *bufferedWorker {
 }
 
 type bufferedWorker struct {
-	ch chan Envelope
+	ch chan envelope
 }
 
-func (w *bufferedWorker) Push(work Envelope) error {
+func (w *bufferedWorker) Push(work envelope) error {
 	select {
 	case w.ch <- work:
 		return nil

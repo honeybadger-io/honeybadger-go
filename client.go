@@ -10,7 +10,7 @@ type Backend interface {
 
 type Client struct {
 	Config *Configuration
-	worker Worker
+	worker worker
 }
 
 func (client *Client) Configure(config Configuration) {
