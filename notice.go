@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
+	"regexp"
 )
 
 type hash map[string]interface{}
@@ -47,6 +48,27 @@ func (n *Notice) toJSON() []byte {
 	}
 }
 
+func composeStack(stack []*Frame, root string) (frames []*Frame) {
+	if root == "" {
+		return stack
+	}
+
+	re, err := regexp.Compile("^" + regexp.QuoteMeta(root))
+	if err != nil {
+		return stack
+	}
+
+	for _, frame := range stack {
+		file := re.ReplaceAllString(frame.File, "[PROJECT_ROOT]")
+		frames = append(frames, &Frame{
+			File:   file,
+			Number: frame.Number,
+			Method: frame.Method,
+		})
+	}
+	return
+}
+
 func newNotice(config *Configuration, err Error) *Notice {
 	notice := Notice{
 		APIKey:       config.APIKey,
@@ -56,7 +78,7 @@ func newNotice(config *Configuration, err Error) *Notice {
 		ErrorClass:   err.Class,
 		Env:          config.Env,
 		Hostname:     config.Hostname,
-		Backtrace:    err.Stack,
+		Backtrace:    composeStack(err.Stack, config.Root),
 	}
 
 	return &notice
