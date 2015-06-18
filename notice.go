@@ -3,6 +3,8 @@ package honeybadger
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/mem"
 	"os"
 	"regexp"
 	"time"
@@ -42,8 +44,37 @@ func (n *Notice) asJSON() *hash {
 			"hostname":         n.Hostname,
 			"time":             time.Now().UTC(),
 			"pid":              os.Getpid(),
+			"stats":            getStats(),
 		},
 	}
+}
+
+func bytesToKB(bytes uint64) float64 {
+	return float64(bytes) / 1024.0
+}
+
+func getStats() *hash {
+	var m, l *hash
+
+	if stat, err := mem.VirtualMemory(); err == nil {
+		m = &hash{
+			"total":      bytesToKB(stat.Total),
+			"free":       bytesToKB(stat.Free),
+			"buffers":    bytesToKB(stat.Buffers),
+			"cached":     bytesToKB(stat.Cached),
+			"free_total": bytesToKB(stat.Free + stat.Buffers + stat.Cached),
+		}
+	}
+
+	if stat, err := load.LoadAvg(); err == nil {
+		l = &hash{
+			"one":     stat.Load1,
+			"five":    stat.Load5,
+			"fifteen": stat.Load15,
+		}
+	}
+
+	return &hash{"mem": m, "load": l}
 }
 
 func (n *Notice) toJSON() []byte {
