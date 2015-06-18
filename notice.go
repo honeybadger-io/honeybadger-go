@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
+	"os"
 	"regexp"
 	"time"
 )
@@ -40,6 +41,7 @@ func (n *Notice) asJSON() *hash {
 			"environment_name": n.Env,
 			"hostname":         n.Hostname,
 			"time":             time.Now().UTC(),
+			"pid":              os.Getpid(),
 		},
 	}
 }
