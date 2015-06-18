@@ -2,10 +2,10 @@ package honeybadger
 
 var (
 	// The global client.
-	client *Client
+	client *Client = New(Configuration{})
 
 	// The global configuration (available through the client).
-	Config *Configuration
+	Config *Configuration = client.Config
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
@@ -53,9 +53,4 @@ func Monitor() {
 // to the Honeybadger service.
 func Flush() {
 	client.Flush()
-}
-
-func init() {
-	client = New(Configuration{})
-	Config = client.Config
 }
