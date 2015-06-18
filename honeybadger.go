@@ -22,6 +22,11 @@ func Configure(c Configuration) {
 	client.Configure(c)
 }
 
+// Set/merge the global context.
+func SetContext(c Context) {
+	client.SetContext(c)
+}
+
 // Notify reports the error err to the Honeybadger service.
 //
 // The first argument err may be an error, a string, or any other type in which
@@ -29,8 +34,8 @@ func Configure(c Configuration) {
 //
 // It returns a string UUID which can be used to reference the error from the
 // Honeybadger service.
-func Notify(err interface{}) string {
-	return client.Notify(newError(err, 2))
+func Notify(err interface{}, extra ...interface{}) string {
+	return client.Notify(newError(err, 2), extra...)
 }
 
 // Monitor is used to automatically notify Honeybadger service of panics which

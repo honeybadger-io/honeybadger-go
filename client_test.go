@@ -25,3 +25,19 @@ func TestConfigureClientEndpoint(t *testing.T) {
 		t.Errorf("Expected Configure to update backend. expected=%#v actual=%#v", "http://localhost:3000", backend.URL)
 	}
 }
+
+func TestClientContext(t *testing.T) {
+	client := New(Configuration{})
+	client.Context = &Context{"foo": "bar"}
+
+	client.SetContext(Context{"bar": "baz"})
+	context := *client.Context
+
+	if context["foo"] != "bar" {
+		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "bar", context["foo"])
+	}
+
+	if context["bar"] != "baz" {
+		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "baz", context["bar"])
+	}
+}

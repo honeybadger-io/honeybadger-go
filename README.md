@@ -37,6 +37,28 @@ if err != nil {
 }
 ```
 
+## Sending extra data to Honeybadger
+
+To send extra context data to Honeybadger, use `honeybadger.SetContext`:
+
+```go
+honeybadger.SetContext(honeybadger.Context{
+  "badgers": true,
+  "badger_id": 1,
+})
+```
+
+You can also add local context using an optional second argument when calling
+`honeybadger.Notify`:
+
+```go
+if err != nil {
+  honeybadger.Notify(err, honeybadger.Context{"badger_id": 2})
+}
+```
+
+Local context keys override the keys set using `honeybadger.SetContext`.
+
 ## Creating a new client
 
 In the same way that the log library provides a predefined "standard" logger,

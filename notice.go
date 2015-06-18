@@ -22,6 +22,7 @@ type Notice struct {
 	Env          string
 	Backtrace    []*Frame
 	ProjectRoot  string
+	Context      Context
 }
 
 func (n *Notice) asJSON() *hash {
@@ -37,6 +38,9 @@ func (n *Notice) asJSON() *hash {
 			"message":   n.ErrorMessage,
 			"class":     n.ErrorClass,
 			"backtrace": n.Backtrace,
+		},
+		"request": &hash{
+			"context": n.Context,
 		},
 		"server": &hash{
 			"project_root":     n.ProjectRoot,
@@ -85,6 +89,10 @@ func (n *Notice) toJSON() []byte {
 	}
 }
 
+func (n *Notice) setContext(context Context) {
+	n.Context = n.Context.merge(context)
+}
+
 func composeStack(stack []*Frame, root string) (frames []*Frame) {
 	if root == "" {
 		return stack
@@ -117,6 +125,7 @@ func newNotice(config *Configuration, err Error) *Notice {
 		Hostname:     config.Hostname,
 		Backtrace:    composeStack(err.Stack, config.Root),
 		ProjectRoot:  config.Root,
+		Context:      Context{},
 	}
 
 	return &notice
