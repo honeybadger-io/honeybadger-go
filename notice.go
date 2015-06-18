@@ -17,6 +17,7 @@ type Notice struct {
 	Hostname     string
 	Env          string
 	Backtrace    []*Frame
+	ProjectRoot  string
 }
 
 func (n *Notice) asJSON() *hash {
@@ -34,6 +35,7 @@ func (n *Notice) asJSON() *hash {
 			"backtrace": n.Backtrace,
 		},
 		"server": &hash{
+			"project_root":     n.ProjectRoot,
 			"environment_name": n.Env,
 			"hostname":         n.Hostname,
 		},
@@ -79,6 +81,7 @@ func newNotice(config *Configuration, err Error) *Notice {
 		Env:          config.Env,
 		Hostname:     config.Hostname,
 		Backtrace:    composeStack(err.Stack, config.Root),
+		ProjectRoot:  config.Root,
 	}
 
 	return &notice
