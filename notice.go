@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
 	"regexp"
+	"time"
 )
 
 type hash map[string]interface{}
@@ -38,6 +39,7 @@ func (n *Notice) asJSON() *hash {
 			"project_root":     n.ProjectRoot,
 			"environment_name": n.Env,
 			"hostname":         n.Hostname,
+			"time":             time.Now().UTC(),
 		},
 	}
 }
