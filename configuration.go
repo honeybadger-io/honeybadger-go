@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"log"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -56,7 +57,7 @@ func newConfig(c Configuration) *Configuration {
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
 		Endpoint: "https://api.honeybadger.io",
-		Timeout:  3 * time.Second,
+		Timeout:  getTimeout(),
 		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 	}.merge(c)
 
@@ -68,6 +69,17 @@ func newConfig(c Configuration) *Configuration {
 }
 
 // Private helper methods
+
+func getTimeout() time.Duration {
+	if env := getEnv("HONEYBADGER_TIMEOUT"); env != "" {
+		if ns, err := strconv.ParseInt(env, 10, 64); err == nil {
+			return time.Duration(ns)
+		}
+	}
+
+	return 3 * time.Second
+}
+
 func getEnv(key string) string {
 	return os.Getenv(key)
 }
