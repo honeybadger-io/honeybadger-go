@@ -10,7 +10,7 @@ type Backend interface {
 
 type Client struct {
 	Config  *Configuration
-	Context *Context
+	context *Context
 	worker  worker
 }
 
@@ -19,7 +19,7 @@ func (client *Client) Configure(config Configuration) {
 }
 
 func (client *Client) SetContext(context Context) {
-	client.Context.Update(context)
+	client.context.Update(context)
 }
 
 func (c *Client) Flush() {
@@ -27,7 +27,7 @@ func (c *Client) Flush() {
 }
 
 func (c *Client) Notify(err interface{}, extra ...interface{}) string {
-	extra = append([]interface{}{*c.Context}, extra...)
+	extra = append([]interface{}{*c.context}, extra...)
 	notice := newNotice(c.Config, newError(err, 1), extra...)
 	c.worker.Push(func() error {
 		if err := c.Config.Backend.Notify(Notices, notice); err != nil {
@@ -44,7 +44,7 @@ func New(c Configuration) *Client {
 	client := Client{
 		Config:  config,
 		worker:  worker,
-		Context: &Context{},
+		context: &Context{},
 	}
 
 	return &client

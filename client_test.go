@@ -28,10 +28,10 @@ func TestConfigureClientEndpoint(t *testing.T) {
 
 func TestClientContext(t *testing.T) {
 	client := New(Configuration{})
-	client.Context = &Context{"foo": "bar"}
+	client.context = &Context{"foo": "bar"}
 
 	client.SetContext(Context{"bar": "baz"})
-	context := *client.Context
+	context := *client.context
 
 	if context["foo"] != "bar" {
 		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "bar", context["foo"])
