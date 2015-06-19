@@ -118,7 +118,7 @@ func composeStack(stack []*Frame, root string) (frames []*Frame) {
 	return
 }
 
-func newNotice(config *Configuration, err Error) *Notice {
+func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 	notice := Notice{
 		APIKey:       config.APIKey,
 		Error:        err,
@@ -130,6 +130,17 @@ func newNotice(config *Configuration, err Error) *Notice {
 		Backtrace:    composeStack(err.Stack, config.Root),
 		ProjectRoot:  config.Root,
 		Context:      Context{},
+	}
+
+	for _, thing := range extra {
+		switch thing := thing.(type) {
+		case Context:
+			notice.setContext(thing)
+		case Params:
+			notice.Params = thing
+		case CGIData:
+			notice.CGIData = thing
+		}
 	}
 
 	return &notice

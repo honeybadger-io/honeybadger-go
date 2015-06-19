@@ -27,18 +27,8 @@ func (c *Client) Flush() {
 }
 
 func (c *Client) Notify(err interface{}, extra ...interface{}) string {
-	notice := newNotice(c.Config, newError(err, 1))
-	notice.setContext(*c.Context)
-	for _, thing := range extra {
-		switch thing := thing.(type) {
-		case Context:
-			notice.setContext(thing)
-		case Params:
-			notice.Params = thing
-		case CGIData:
-			notice.CGIData = thing
-		}
-	}
+	extra = append([]interface{}{*c.Context}, extra...)
+	notice := newNotice(c.Config, newError(err, 1), extra...)
 	c.worker.Push(func() error {
 		if err := c.Config.Backend.Notify(Notices, notice); err != nil {
 			return err
