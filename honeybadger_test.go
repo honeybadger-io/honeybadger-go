@@ -2,8 +2,10 @@ package honeybadger
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,11 +28,11 @@ func TestNotify(t *testing.T) {
 	mux := http.NewServeMux()
 	ts := httptest.NewServer(mux)
 
-	var requests []*http.Request
+	var requests []*HTTPRequest
 	mux.HandleFunc("/v1/notices",
 		func(w http.ResponseWriter, r *http.Request) {
 			testMethod(t, r, "POST")
-			requests = append(requests, r)
+			requests = append(requests, newHTTPRequest(r))
 			w.WriteHeader(201)
 			fmt.Fprint(w, `{"id":"87ded4b4-63cc-480a-b50c-8abe1376d972"}`)
 		},
@@ -50,9 +52,43 @@ func TestNotify(t *testing.T) {
 	if len(requests) != 1 {
 		t.Errorf("Expected 1 request to have been made. actual=%#v", len(requests))
 	}
+
+	payload := requests[0].decodeJSON()
+
+	if payload["api_key"] != "badgers" {
+		t.Errorf("Expected payload to include API key. expected=%#v actual=%#v", "badgers", payload["api_key"])
+	}
+
+	for _, key := range []string{"notifier", "error", "request", "server"} {
+		switch payload[key].(type) {
+		case map[string]interface{}:
+			// OK
+		default:
+			t.Errorf("Expected payload to include %v hash.", key)
+		}
+	}
 }
 
 // Helper functions.
+
+type HTTPRequest struct {
+	Request *http.Request
+	Body    []byte
+}
+
+func (h *HTTPRequest) decodeJSON() hash {
+	var dat hash
+	err := json.Unmarshal(h.Body, &dat)
+	if err != nil {
+		panic(err)
+	}
+	return dat
+}
+
+func newHTTPRequest(r *http.Request) *HTTPRequest {
+	body, _ := ioutil.ReadAll(r.Body)
+	return &HTTPRequest{r, body}
+}
 
 func testMethod(t *testing.T, r *http.Request, method string) {
 	if r.Method != method {
