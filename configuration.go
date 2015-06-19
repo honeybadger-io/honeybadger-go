@@ -56,7 +56,7 @@ func newConfig(c Configuration) *Configuration {
 		Root:     getPWD(),
 		Env:      getEnv("HONEYBADGER_ENV"),
 		Hostname: getHostname(),
-		Endpoint: "https://api.honeybadger.io",
+		Endpoint: getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
 		Timeout:  getTimeout(),
 		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 	}.merge(c)
@@ -80,8 +80,12 @@ func getTimeout() time.Duration {
 	return 3 * time.Second
 }
 
-func getEnv(key string) string {
-	return os.Getenv(key)
+func getEnv(key string, fallback ...string) (val string) {
+	val = os.Getenv(key)
+	if val == "" && len(fallback) > 0 {
+		return fallback[0]
+	}
+	return
 }
 
 func getHostname() string {
