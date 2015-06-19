@@ -1,6 +1,10 @@
 package honeybadger
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+	"strings"
+)
 
 var (
 	// The global client.
@@ -19,6 +23,12 @@ type Feature struct {
 	Endpoint string
 }
 
+// CGI variables such as HTTP_METHOD.
+type CGIData hash
+
+// Request parameters.
+type Params url.Values
+
 // Configures the global client.
 func Configure(c Configuration) {
 	client.Configure(c)
@@ -27,20 +37,6 @@ func Configure(c Configuration) {
 // Set/merge the global context.
 func SetContext(c Context) {
 	client.SetContext(c)
-}
-
-// ...
-func Handler(h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				client.Notify(newError(err, 3), r.Form)
-				panic(err)
-			}
-		}()
-		h.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
 }
 
 // Notify reports the error err to the Honeybadger service.
@@ -74,4 +70,29 @@ func Monitor() {
 // to the Honeybadger service.
 func Flush() {
 	client.Flush()
+}
+
+// Returns an http.Handler function which automatically reports panics to
+// Honeybadger including request data.
+func Handler(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				client.Notify(newError(err, 3), Params(r.Form), getCGIData(r))
+				panic(err)
+			}
+		}()
+		h.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+func getCGIData(request *http.Request) CGIData {
+	cgi_data := CGIData{}
+	replacer := strings.NewReplacer("-", "_")
+	for k, v := range request.Header {
+		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
+		cgi_data[key] = v[0]
+	}
+	return cgi_data
 }

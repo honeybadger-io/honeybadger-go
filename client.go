@@ -1,7 +1,5 @@
 package honeybadger
 
-import "net/url"
-
 type Payload interface {
 	toJSON() []byte
 }
@@ -35,8 +33,10 @@ func (c *Client) Notify(err interface{}, extra ...interface{}) string {
 		switch thing := thing.(type) {
 		case Context:
 			notice.setContext(thing)
-		case url.Values:
+		case Params:
 			notice.Params = thing
+		case CGIData:
+			notice.CGIData = thing
 		}
 	}
 	c.worker.Push(func() error {
