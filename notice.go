@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
+	"net/url"
 	"os"
 	"regexp"
 	"time"
@@ -23,6 +24,7 @@ type Notice struct {
 	Backtrace    []*Frame
 	ProjectRoot  string
 	Context      Context
+	Params       url.Values
 }
 
 func (n *Notice) asJSON() *hash {
@@ -41,6 +43,7 @@ func (n *Notice) asJSON() *hash {
 		},
 		"request": &hash{
 			"context": n.Context,
+			"params":  n.Params,
 		},
 		"server": &hash{
 			"project_root":     n.ProjectRoot,

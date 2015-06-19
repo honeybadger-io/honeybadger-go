@@ -1,5 +1,7 @@
 package honeybadger
 
+import "net/http"
+
 var (
 	// The global client.
 	client *Client = New(Configuration{})
@@ -25,6 +27,20 @@ func Configure(c Configuration) {
 // Set/merge the global context.
 func SetContext(c Context) {
 	client.SetContext(c)
+}
+
+// ...
+func Handler(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				client.Notify(newError(err, 3), r.Form)
+				panic(err)
+			}
+		}()
+		h.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }
 
 // Notify reports the error err to the Honeybadger service.
