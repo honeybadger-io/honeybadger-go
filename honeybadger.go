@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const VERSION = "0.0.1"
+
 var (
 	// The global client.
 	client *Client = New(Configuration{})

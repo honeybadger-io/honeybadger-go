@@ -35,7 +35,7 @@ func (n *Notice) asJSON() *hash {
 		"notifier": &hash{
 			"name":    "honeybadger",
 			"url":     "https://github.com/honeybadger-io/honeybadger-go",
-			"version": "0.0.0",
+			"version": VERSION,
 		},
 		"error": &hash{
 			"token":     n.Token,
