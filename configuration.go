@@ -76,7 +76,6 @@ func getTimeout() time.Duration {
 			return time.Duration(ns)
 		}
 	}
-
 	return 3 * time.Second
 }
 
@@ -88,24 +87,16 @@ func getEnv(key string, fallback ...string) (val string) {
 	return
 }
 
-func getHostname() string {
-	var hostname string
-	hostname = getEnv("HONEYBADGER_HOSTNAME")
-	if hostname == "" {
-		if val, err := os.Hostname(); err == nil {
-			hostname = val
-		}
+func getHostname() (hostname string) {
+	if val, err := os.Hostname(); err == nil {
+		hostname = val
 	}
-	return hostname
+	return getEnv("HONEYBADGER_HOSTNAME", hostname)
 }
 
-func getPWD() string {
-	var pwd string
-	pwd = getEnv("HONEYBADGER_ROOT")
-	if pwd == "" {
-		if val, err := os.Getwd(); err == nil {
-			pwd = val
-		}
+func getPWD() (pwd string) {
+	if val, err := os.Getwd(); err == nil {
+		pwd = val
 	}
-	return pwd
+	return getEnv("HONEYBADGER_ROOT", pwd)
 }
