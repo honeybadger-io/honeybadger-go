@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
+	"net/url"
 	"os"
 	"regexp"
 	"time"
@@ -25,6 +26,7 @@ type Notice struct {
 	Context      Context
 	Params       Params
 	CGIData      CGIData
+	URL          string
 }
 
 func (n *Notice) asJSON() *hash {
@@ -45,6 +47,7 @@ func (n *Notice) asJSON() *hash {
 			"context":  n.Context,
 			"params":   n.Params,
 			"cgi_data": n.CGIData,
+			"url":      n.URL,
 		},
 		"server": &hash{
 			"project_root":     n.ProjectRoot,
@@ -140,6 +143,8 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 			notice.Params = thing
 		case CGIData:
 			notice.CGIData = thing
+		case url.URL:
+			notice.URL = thing.String()
 		}
 	}
 

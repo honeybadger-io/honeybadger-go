@@ -78,7 +78,7 @@ func Handler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				client.Notify(newError(err, 3), Params(r.Form), getCGIData(r))
+				client.Notify(newError(err, 3), Params(r.Form), getCGIData(r), *r.URL)
 				panic(err)
 			}
 		}()
