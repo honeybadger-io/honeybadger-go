@@ -96,8 +96,8 @@ func (n *Notice) toJSON() []byte {
 	}
 }
 
-func (n *Notice) setContext(context Context) {
-	n.Context = n.Context.merge(context)
+func (n *Notice) SetContext(context Context) {
+	n.Context.Update(context)
 }
 
 func composeStack(stack []*Frame, root string) (frames []*Frame) {
@@ -138,7 +138,7 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 	for _, thing := range extra {
 		switch thing := thing.(type) {
 		case Context:
-			notice.setContext(thing)
+			notice.SetContext(thing)
 		case Params:
 			notice.Params = thing
 		case CGIData:

@@ -19,7 +19,7 @@ func (client *Client) Configure(config Configuration) {
 }
 
 func (client *Client) SetContext(context Context) {
-	*client.Context = client.Context.merge(context)
+	client.Context.Update(context)
 }
 
 func (c *Client) Flush() {
