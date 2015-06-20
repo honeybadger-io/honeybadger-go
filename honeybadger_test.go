@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	mux      *http.ServeMux
-	ts       *httptest.Server
-	requests []*HTTPRequest
+	mux           *http.ServeMux
+	ts            *httptest.Server
+	requests      []*HTTPRequest
+	defaultConfig Configuration = *Config
 )
 
 type HTTPRequest struct {
@@ -49,12 +50,16 @@ func setup(t *testing.T) {
 		},
 	)
 
-	client.Config = newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+	*client.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+}
+
+func teardown() {
+	*client.Config = defaultConfig
 }
 
 func TestDefaultConfig(t *testing.T) {
 	if Config.APIKey != "" {
-		t.Errorf("Expected config.APIKey to be empty by default. expected=%#v result=%#v", "", Config.APIKey)
+		t.Errorf("Expected Config.APIKey to be empty by default. expected=%#v result=%#v", "", Config.APIKey)
 	}
 }
 
@@ -67,6 +72,7 @@ func TestConfigure(t *testing.T) {
 
 func TestNotify(t *testing.T) {
 	setup(t)
+	defer teardown()
 
 	res := Notify(errors.New("Cobras!"))
 	if uuid.Parse(res) == nil {
