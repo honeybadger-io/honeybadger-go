@@ -38,6 +38,13 @@ func (c *Client) Notify(err interface{}, extra ...interface{}) string {
 	return notice.Token
 }
 
+func (c *Client) Monitor() {
+	if err := recover(); err != nil {
+		client.Notify(newError(err, 1))
+		panic(err)
+	}
+}
+
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
