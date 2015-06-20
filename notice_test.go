@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -54,7 +55,15 @@ func TestNewNotice(t *testing.T) {
 }
 
 func TestToJSON(t *testing.T) {
-	err := errors.New("Cobras!")
-	notice := newNotice(Config, newError(err, 0))
-	notice.toJSON()
+	notice := newNotice(Config, newError(errors.New("Cobras!"), 0))
+	raw := notice.toJSON()
+
+	var payload hash
+	err := json.Unmarshal(raw, &payload)
+	if err != nil {
+		t.Errorf("Got error while parsing notice JSON err=%#v json=%#v", err, raw)
+		return
+	}
+
+	testNoticePayload(t, payload)
 }
