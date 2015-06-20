@@ -33,7 +33,7 @@ func (c *Client) Flush() {
 
 func (c *Client) Notify(err interface{}, extra ...interface{}) string {
 	extra = append([]interface{}{*c.context}, extra...)
-	notice := newNotice(c.Config, newError(err, 1), extra...)
+	notice := newNotice(c.Config, newError(err, 2), extra...)
 	c.worker.Push(func() error {
 		if err := c.Config.Backend.Notify(Notices, notice); err != nil {
 			return err
@@ -45,7 +45,7 @@ func (c *Client) Notify(err interface{}, extra ...interface{}) string {
 
 func (c *Client) Monitor() {
 	if err := recover(); err != nil {
-		client.Notify(newError(err, 1))
+		client.Notify(newError(err, 2))
 		panic(err)
 	}
 }
@@ -54,7 +54,7 @@ func (c *Client) Handler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				client.Notify(newError(err, 3), Params(r.Form), getCGIData(r), *r.URL)
+				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
 				panic(err)
 			}
 		}()
