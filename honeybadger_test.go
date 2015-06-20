@@ -75,6 +75,7 @@ func TestNotify(t *testing.T) {
 	defer teardown()
 
 	res := Notify(errors.New("Cobras!"))
+
 	if uuid.Parse(res) == nil {
 		t.Errorf("Expected Notify() to return a UUID. actual=%#v", res)
 	}
@@ -82,13 +83,45 @@ func TestNotify(t *testing.T) {
 	Flush()
 
 	testRequestCount(t, 1)
+	testNoticePayload(t, requests[0].decodeJSON())
+}
+
+func TestNotifyWithContext(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	context := Context{"foo": "bar"}
+	Notify("Cobras!", context)
+	Flush()
+
+	testRequestCount(t, 1)
 
 	payload := requests[0].decodeJSON()
-
 	testNoticePayload(t, payload)
+	assertContext(t, payload, context)
 }
 
 // Helper functions.
+
+func assertContext(t *testing.T, payload hash, expected Context) {
+	request, ok := payload["request"].(map[string]interface{})
+	if !ok {
+		t.Errorf("Missing request in payload actual=%#v.", payload)
+		return
+	}
+
+	context, ok := request["context"].(map[string]interface{})
+	if !ok {
+		t.Errorf("Missing context in request payload actual=%#v.", request)
+		return
+	}
+
+	for k, v := range expected {
+		if context[k] != v {
+			t.Errorf("Expected context to include hash. expected=%#v actual=%#v", expected, context)
+		}
+	}
+}
 
 func testRequestCount(t *testing.T, num int) {
 	if len(requests) != num {
