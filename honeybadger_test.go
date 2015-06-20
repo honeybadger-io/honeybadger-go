@@ -43,7 +43,7 @@ func setup(t *testing.T) {
 	requests = []*HTTPRequest{}
 	mux.HandleFunc("/v1/notices",
 		func(w http.ResponseWriter, r *http.Request) {
-			testMethod(t, r, "POST")
+			assertMethod(t, r, "POST")
 			requests = append(requests, newHTTPRequest(r))
 			w.WriteHeader(201)
 			fmt.Fprint(w, `{"id":"87ded4b4-63cc-480a-b50c-8abe1376d972"}`)
@@ -82,7 +82,10 @@ func TestNotify(t *testing.T) {
 
 	Flush()
 
-	testRequestCount(t, 1)
+	if !testRequestCount(t, 1) {
+		return
+	}
+
 	testNoticePayload(t, requests[0].decodeJSON())
 }
 
@@ -94,10 +97,15 @@ func TestNotifyWithContext(t *testing.T) {
 	Notify("Cobras!", context)
 	Flush()
 
-	testRequestCount(t, 1)
+	if !testRequestCount(t, 1) {
+		return
+	}
 
 	payload := requests[0].decodeJSON()
-	testNoticePayload(t, payload)
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
 	assertContext(t, payload, context)
 }
 
@@ -124,24 +132,28 @@ func assertContext(t *testing.T, payload hash, expected Context) {
 	}
 }
 
-func testRequestCount(t *testing.T, num int) {
+func testRequestCount(t *testing.T, num int) bool {
 	if len(requests) != num {
 		t.Errorf("Expected %v request to have been made. expected=%#v actual=%#v", num, num, len(requests))
+		return false
 	}
+	return true
 }
 
-func testNoticePayload(t *testing.T, payload hash) {
+func testNoticePayload(t *testing.T, payload hash) bool {
 	for _, key := range []string{"notifier", "error", "request", "server"} {
 		switch payload[key].(type) {
 		case map[string]interface{}:
 			// OK
 		default:
-			t.Errorf("Expected payload to include %v hash.", key)
+			t.Errorf("Expected payload to include %v hash. expected=%#v actual=%#v", key, key, payload)
+			return false
 		}
 	}
+	return true
 }
 
-func testMethod(t *testing.T, r *http.Request, method string) {
+func assertMethod(t *testing.T, r *http.Request, method string) {
 	if r.Method != method {
 		t.Errorf("Unexpected request method. actual=%#v expected=%#v", r.Method, method)
 	}
