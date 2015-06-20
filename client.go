@@ -1,5 +1,10 @@
 package honeybadger
 
+import (
+	"net/http"
+	"strings"
+)
+
 type Payload interface {
 	toJSON() []byte
 }
@@ -43,6 +48,29 @@ func (c *Client) Monitor() {
 		client.Notify(newError(err, 1))
 		panic(err)
 	}
+}
+
+func (c *Client) Handler(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				client.Notify(newError(err, 3), Params(r.Form), getCGIData(r), *r.URL)
+				panic(err)
+			}
+		}()
+		h.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+func getCGIData(request *http.Request) CGIData {
+	cgi_data := CGIData{}
+	replacer := strings.NewReplacer("-", "_")
+	for k, v := range request.Header {
+		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
+		cgi_data[key] = v[0]
+	}
+	return cgi_data
 }
 
 func New(c Configuration) *Client {

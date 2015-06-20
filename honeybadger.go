@@ -3,7 +3,6 @@ package honeybadger
 import (
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 const VERSION = "0.0.1"
@@ -77,24 +76,5 @@ func Flush() {
 // Returns an http.Handler function which automatically reports panics to
 // Honeybadger including request data.
 func Handler(h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				client.Notify(newError(err, 3), Params(r.Form), getCGIData(r), *r.URL)
-				panic(err)
-			}
-		}()
-		h.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
-}
-
-func getCGIData(request *http.Request) CGIData {
-	cgi_data := CGIData{}
-	replacer := strings.NewReplacer("-", "_")
-	for k, v := range request.Header {
-		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
-		cgi_data[key] = v[0]
-	}
-	return cgi_data
+	return client.Handler(h)
 }
