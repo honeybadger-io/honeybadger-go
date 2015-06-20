@@ -119,6 +119,7 @@ func assertContext(t *testing.T, payload hash, expected Context) {
 	for k, v := range expected {
 		if context[k] != v {
 			t.Errorf("Expected context to include hash. expected=%#v actual=%#v", expected, context)
+			return
 		}
 	}
 }
