@@ -5,37 +5,47 @@ import (
 	"strings"
 )
 
+// The Payload interface is implemented by any type which can be handled by the
+// Backend interface.
 type Payload interface {
 	toJSON() []byte
 }
 
+// The Backend interface is implemented by the server type by default, but a
+// custom implementation may be configured by the user.
 type Backend interface {
 	Notify(feature Feature, payload Payload) error
 }
 
+// Client is the manager for interacting with the Honeybadger service. It holds
+// the configuration and implements the public API.
 type Client struct {
 	Config  *Configuration
 	context *Context
 	worker  worker
 }
 
+// Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
 	*client.Config = client.Config.merge(config)
 }
 
+// SetContext updates the client context with supplied context.
 func (client *Client) SetContext(context Context) {
 	client.context.Update(context)
 }
 
-func (c *Client) Flush() {
-	c.worker.Flush()
+// Flush blocks until the worker has processed its queue.
+func (client *Client) Flush() {
+	client.worker.Flush()
 }
 
-func (c *Client) Notify(err interface{}, extra ...interface{}) string {
-	extra = append([]interface{}{*c.context}, extra...)
-	notice := newNotice(c.Config, newError(err, 2), extra...)
-	c.worker.Push(func() error {
-		if err := c.Config.Backend.Notify(Notices, notice); err != nil {
+// Notify reports the error err to the Honeybadger service.
+func (client *Client) Notify(err interface{}, extra ...interface{}) string {
+	extra = append([]interface{}{*client.context}, extra...)
+	notice := newNotice(client.Config, newError(err, 2), extra...)
+	client.worker.Push(func() error {
+		if err := client.Config.Backend.Notify(Notices, notice); err != nil {
 			return err
 		}
 		return nil
@@ -43,14 +53,18 @@ func (c *Client) Notify(err interface{}, extra ...interface{}) string {
 	return notice.Token
 }
 
-func (c *Client) Monitor() {
+// Monitor automatically reports panics which occur in the function it's called
+// from. Must be deferred.
+func (client *Client) Monitor() {
 	if err := recover(); err != nil {
 		client.Notify(newError(err, 2))
 		panic(err)
 	}
 }
 
-func (c *Client) Handler(h http.Handler) http.Handler {
+// Handler returns an http.Handler function which automatically reports panics
+// to Honeybadger and then re-panics.
+func (client *Client) Handler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
@@ -64,15 +78,16 @@ func (c *Client) Handler(h http.Handler) http.Handler {
 }
 
 func getCGIData(request *http.Request) CGIData {
-	cgi_data := CGIData{}
+	cgiData := CGIData{}
 	replacer := strings.NewReplacer("-", "_")
 	for k, v := range request.Header {
 		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
-		cgi_data[key] = v[0]
+		cgiData[key] = v[0]
 	}
-	return cgi_data
+	return cgiData
 }
 
+// New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
