@@ -77,16 +77,6 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func getCGIData(request *http.Request) CGIData {
-	cgiData := CGIData{}
-	replacer := strings.NewReplacer("-", "_")
-	for k, v := range request.Header {
-		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
-		cgiData[key] = v[0]
-	}
-	return cgiData
-}
-
 // New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
@@ -98,4 +88,14 @@ func New(c Configuration) *Client {
 	}
 
 	return &client
+}
+
+func getCGIData(request *http.Request) CGIData {
+	cgiData := CGIData{}
+	replacer := strings.NewReplacer("-", "_")
+	for k, v := range request.Header {
+		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
+		cgiData[key] = v[0]
+	}
+	return cgiData
 }
