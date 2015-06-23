@@ -3,7 +3,7 @@ package honeybadger
 import "fmt"
 
 var (
-	WorkerOverflowError = fmt.Errorf("The worker is full; this envelope will be dropped.")
+	errWorkerOverflow = fmt.Errorf("The worker is full; this envelope will be dropped.")
 )
 
 func newBufferedWorker(config *Configuration) *bufferedWorker {
@@ -35,7 +35,7 @@ func (w *bufferedWorker) Push(work envelope) error {
 	case w.ch <- work:
 		return nil
 	default:
-		return WorkerOverflowError
+		return errWorkerOverflow
 	}
 }
 
