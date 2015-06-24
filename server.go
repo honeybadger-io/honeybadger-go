@@ -9,10 +9,11 @@ import (
 	"time"
 )
 
+// Errors returned by the backend when unable to successfully handle payload.
 var (
-	RateExceeded    = errors.New("Rate exceeded: slow down!")
-	PaymentRequired = errors.New("Payment required: expired trial or credit card?")
-	Unauthorized    = errors.New("Unauthorized: bad API key?")
+	ErrRateExceeded    = errors.New("Rate exceeded: slow down!")
+	ErrPaymentRequired = errors.New("Payment required: expired trial or credit card?")
+	ErrUnauthorized    = errors.New("Unauthorized: bad API key?")
 )
 
 func newServerBackend(config *Configuration) *server {
@@ -63,11 +64,11 @@ func (s *server) Notify(feature Feature, payload Payload) error {
 	case 201:
 		return nil
 	case 429, 503:
-		return RateExceeded
+		return ErrRateExceeded
 	case 402:
-		return PaymentRequired
+		return ErrPaymentRequired
 	case 403:
-		return Unauthorized
+		return ErrUnauthorized
 	default:
 		return fmt.Errorf(
 			"request failed status=%d expected=%d",
