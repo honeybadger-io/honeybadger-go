@@ -71,8 +71,6 @@ func newConfig(c Configuration) *Configuration {
 	return &config
 }
 
-// Private helper methods
-
 func getTimeout() time.Duration {
 	if env := getEnv("HONEYBADGER_TIMEOUT"); env != "" {
 		if ns, err := strconv.ParseInt(env, 10, 64); err == nil {
