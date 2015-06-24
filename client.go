@@ -41,16 +41,20 @@ func (client *Client) Flush() {
 }
 
 // Notify reports the error err to the Honeybadger service.
-func (client *Client) Notify(err interface{}, extra ...interface{}) string {
+func (client *Client) Notify(err interface{}, extra ...interface{}) (string, error) {
 	extra = append([]interface{}{*client.context}, extra...)
 	notice := newNotice(client.Config, newError(err, 2), extra...)
-	client.worker.Push(func() error {
+	workerErr := client.worker.Push(func() error {
 		if err := client.Config.Backend.Notify(Notices, notice); err != nil {
 			return err
 		}
 		return nil
 	})
-	return notice.Token
+	if workerErr != nil {
+		client.Config.Logger.Printf("worker error: %v\n", workerErr)
+		return "", workerErr
+	}
+	return notice.Token, nil
 }
 
 // Monitor automatically reports panics which occur in the function it's called

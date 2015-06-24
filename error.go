@@ -31,13 +31,13 @@ func (e Error) Error() string {
 func newError(thing interface{}, stackOffset int) Error {
 	var err error
 
-	switch thing := thing.(type) {
+	switch t := thing.(type) {
 	case Error:
-		return thing
+		return t
 	case error:
-		err = thing
+		err = t
 	default:
-		err = fmt.Errorf("%v", thing)
+		err = fmt.Errorf("%v", t)
 	}
 
 	return Error{

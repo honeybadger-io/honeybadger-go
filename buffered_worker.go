@@ -39,12 +39,11 @@ func (w *bufferedWorker) Push(work envelope) error {
 	}
 }
 
-func (w *bufferedWorker) Flush() error {
+func (w *bufferedWorker) Flush() {
 	ch := make(chan bool)
 	w.ch <- func() error {
 		ch <- true
 		return nil
 	}
 	<-ch
-	return nil
 }

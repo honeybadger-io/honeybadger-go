@@ -74,7 +74,7 @@ func TestNotify(t *testing.T) {
 	setup(t)
 	defer teardown()
 
-	res := Notify(errors.New("Cobras!"))
+	res, _ := Notify(errors.New("Cobras!"))
 
 	if uuid.Parse(res) == nil {
 		t.Errorf("Expected Notify() to return a UUID. actual=%#v", res)
@@ -112,13 +112,16 @@ func TestNotifyWithContext(t *testing.T) {
 // Helper functions.
 
 func assertContext(t *testing.T, payload hash, expected Context) {
-	request, ok := payload["request"].(map[string]interface{})
+	var request, context hash
+	var ok bool
+
+	request, ok = payload["request"].(map[string]interface{})
 	if !ok {
 		t.Errorf("Missing request in payload actual=%#v.", payload)
 		return
 	}
 
-	context, ok := request["context"].(map[string]interface{})
+	context, ok = request["context"].(map[string]interface{})
 	if !ok {
 		t.Errorf("Missing context in request payload actual=%#v.", request)
 		return

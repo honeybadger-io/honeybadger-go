@@ -138,15 +138,15 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 	}
 
 	for _, thing := range extra {
-		switch thing := thing.(type) {
+		switch t := thing.(type) {
 		case Context:
-			notice.setContext(thing)
+			notice.setContext(t)
 		case Params:
-			notice.Params = thing
+			notice.Params = t
 		case CGIData:
-			notice.CGIData = thing
+			notice.CGIData = t
 		case url.URL:
-			notice.URL = thing.String()
+			notice.URL = t.String()
 		}
 	}
 

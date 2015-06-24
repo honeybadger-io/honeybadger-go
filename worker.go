@@ -4,5 +4,5 @@ type envelope func() error
 
 type worker interface {
 	Push(envelope) error
-	Flush() error
+	Flush()
 }

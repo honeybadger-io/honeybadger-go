@@ -50,8 +50,8 @@ func SetContext(c Context) {
 // case its formatted value will be used.
 //
 // It returns a string UUID which can be used to reference the error from the
-// Honeybadger service.
-func Notify(err interface{}, extra ...interface{}) string {
+// Honeybadger service, and an error as a second argument.
+func Notify(err interface{}, extra ...interface{}) (string, error) {
 	return client.Notify(newError(err, 2), extra...)
 }
 
