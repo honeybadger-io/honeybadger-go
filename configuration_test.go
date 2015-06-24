@@ -16,7 +16,7 @@ func TestMergeConfig(t *testing.T) {
 	config := Configuration{}
 	logger := &TestLogger{}
 	backend := &TestBackend{}
-	new_config := config.merge(Configuration{
+	result := config.merge(Configuration{
 		Logger:  logger,
 		Backend: backend,
 		Root:    "/tmp/foo",
@@ -26,14 +26,14 @@ func TestMergeConfig(t *testing.T) {
 		t.Errorf("Merged config should not mutate original expected=%#v actual=%#v", "", config.Root)
 	}
 
-	if new_config.Logger != logger {
-		t.Errorf("Expected config to merge logger expected=%#v actual=%#v", logger, new_config.Logger)
+	if result.Logger != logger {
+		t.Errorf("Expected config to merge logger expected=%#v actual=%#v", logger, result.Logger)
 	}
-	if new_config.Backend != backend {
-		t.Errorf("Expected config to merge backend expected=%#v actual=%#v", backend, new_config.Backend)
+	if result.Backend != backend {
+		t.Errorf("Expected config to merge backend expected=%#v actual=%#v", backend, result.Backend)
 	}
-	if new_config.Root != "/tmp/foo" {
-		t.Errorf("Expected config to merge root expected=%#v actual=%#v", "/tmp/foo", new_config.Root)
+	if result.Root != "/tmp/foo" {
+		t.Errorf("Expected config to merge root expected=%#v actual=%#v", "/tmp/foo", result.Root)
 	}
 }
 

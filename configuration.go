@@ -7,10 +7,13 @@ import (
 	"time"
 )
 
+// The Logger interface is implemented by the standard log package and requires
+// a limited subset of the interface implemented by log.Logger.
 type Logger interface {
 	Printf(format string, v ...interface{})
 }
 
+// Configuration manages the configuration for the client.
 type Configuration struct {
 	APIKey   string
 	Root     string
