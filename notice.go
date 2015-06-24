@@ -13,6 +13,8 @@ import (
 
 type hash map[string]interface{}
 
+// Notice is a representation of the error which is sent to Honeybadger, and
+// implements the Payload interface.
 type Notice struct {
 	APIKey       string
 	Error        Error
@@ -89,14 +91,14 @@ func getStats() *hash {
 }
 
 func (n *Notice) toJSON() []byte {
-	if out, err := json.Marshal(n.asJSON()); err == nil {
+	out, err := json.Marshal(n.asJSON())
+	if err == nil {
 		return out
-	} else {
-		panic(err)
 	}
+	panic(err)
 }
 
-func (n *Notice) SetContext(context Context) {
+func (n *Notice) setContext(context Context) {
 	n.Context.Update(context)
 }
 
@@ -138,7 +140,7 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 	for _, thing := range extra {
 		switch thing := thing.(type) {
 		case Context:
-			notice.SetContext(thing)
+			notice.setContext(thing)
 		case Params:
 			notice.Params = thing
 		case CGIData:
