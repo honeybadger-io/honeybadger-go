@@ -5,37 +5,41 @@ import (
 	"net/url"
 )
 
+// VERSION defines the version of the honeybadger package.
 const VERSION = "0.0.1"
 
 var (
-	// The global client.
-	client *Client = New(Configuration{})
+	// client is a pre-defined "global" client.
+	client = New(Configuration{})
 
-	// The global configuration (available through the client).
-	Config *Configuration = client.Config
+	// Config is a pointer to the global client's Config.
+	Config = client.Config
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
 )
 
-// A feature is provided by the API service. Its Endpoint maps to the
-// collection endpoint of the /v1 API.
+// Feature references a resource provided by the API service. Its Endpoint maps
+// to the collection endpoint of the /v1 API.
 type Feature struct {
 	Endpoint string
 }
 
-// CGI variables such as HTTP_METHOD.
+// CGIData stores variables from the server/request environment indexed by key.
+// Header keys should be converted to upercase, all non-alphanumeric characters
+// replaced with underscores, and prefixed with HTTP_. For example, the header
+// "Content-Type" would become "HTTP_CONTENT_TYPE".
 type CGIData hash
 
-// Request parameters.
+// Params stores the form or url values from an HTTP request.
 type Params url.Values
 
-// Configures the global client.
+// Configure updates configuration of the global client.
 func Configure(c Configuration) {
 	client.Configure(c)
 }
 
-// Set/merge the global context.
+// SetContext merges c Context into the Context of the global client.
 func SetContext(c Context) {
 	client.SetContext(c)
 }
@@ -73,8 +77,8 @@ func Flush() {
 	client.Flush()
 }
 
-// Returns an http.Handler function which automatically reports panics to
-// Honeybadger including request data.
+// Handler returns an http.Handler function which automatically reports panics
+// to Honeybadger and then re-panics.
 func Handler(h http.Handler) http.Handler {
 	return client.Handler(h)
 }

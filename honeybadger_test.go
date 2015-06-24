@@ -15,7 +15,7 @@ var (
 	mux           *http.ServeMux
 	ts            *httptest.Server
 	requests      []*HTTPRequest
-	defaultConfig Configuration = *Config
+	defaultConfig = *Config
 )
 
 type HTTPRequest struct {
