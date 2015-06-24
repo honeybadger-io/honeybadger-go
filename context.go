@@ -1,11 +1,11 @@
 package honeybadger
 
-// A key/value map used to send extra data to Honeybadger.
+// Context is used to send extra data to Honeybadger.
 type Context hash
 
-// Updates the context object.
-func (target Context) Update(context Context) {
-	for k, v := range context {
-		target[k] = v
+// Update applies the values in other Context to context.
+func (context Context) Update(other Context) {
+	for k, v := range other {
+		context[k] = v
 	}
 }

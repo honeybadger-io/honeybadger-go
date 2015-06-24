@@ -7,14 +7,16 @@ import (
 	"strconv"
 )
 
-const MaxFrames = 20
+const maxFrames = 20
 
+// Frame represent a stack frame inside of a Honeybadger backtrace.
 type Frame struct {
 	Number string `json:"number"`
 	File   string `json:"file"`
 	Method string `json:"method"`
 }
 
+// Error provides more structured information about a Go error.
 type Error struct {
 	err     interface{}
 	Message string
@@ -47,7 +49,7 @@ func newError(thing interface{}, stackOffset int) Error {
 }
 
 func generateStack(offset int) (frames []*Frame) {
-	stack := make([]uintptr, MaxFrames)
+	stack := make([]uintptr, maxFrames)
 	length := runtime.Callers(2+offset, stack[:])
 	for _, pc := range stack[:length] {
 		f := runtime.FuncForPC(pc)
