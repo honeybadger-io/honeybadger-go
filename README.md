@@ -44,7 +44,7 @@ To send extra context data to Honeybadger, use `honeybadger.SetContext`:
 ```go
 honeybadger.SetContext(honeybadger.Context{
   "badgers": true,
-  "badger_id": 1,
+  "user_id": 1,
 })
 ```
 
@@ -53,7 +53,7 @@ You can also add local context using an optional second argument when calling
 
 ```go
 if err != nil {
-  honeybadger.Notify(err, honeybadger.Context{"badger_id": 2})
+  honeybadger.Notify(err, honeybadger.Context{"user_id": 2})
 }
 ```
 
