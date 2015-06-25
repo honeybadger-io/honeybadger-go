@@ -1,14 +1,15 @@
 package honeybadger
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
-	"github.com/shirou/gopsutil/load"
-	"github.com/shirou/gopsutil/mem"
 	"net/url"
 	"os"
 	"regexp"
 	"time"
+
+	"code.google.com/p/go-uuid/uuid"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/mem"
 )
 
 type hash map[string]interface{}

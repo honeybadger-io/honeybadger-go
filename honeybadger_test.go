@@ -1,7 +1,6 @@
 package honeybadger
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"code.google.com/p/go-uuid/uuid"
 )
 
 var (
