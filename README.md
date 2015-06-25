@@ -27,7 +27,21 @@ honeybadger.Configure(honeybadger.Configuration{APIKey: "your api key"})
 You can also configure Honeybadger via environment variables. See
 [Configuration](#configuration) for more information.
 
-## Automatically reporting panics
+## Automatically reporting panics during a server request
+
+To automatically report panics which happen during an HTTP request, wrap your
+`http.Handler` function with `honeybadger.Handler`:
+
+```go
+log.Fatal(http.ListenAndServe(":8080", honeybadger.Handler(handler)))
+```
+
+Request data such as cookies and params will automatically be reported with
+errors which happen inside `honeybadger.Handler`. Make sure you recover from
+panics after honeybadger's Handler has been executed to ensure all panics are
+reported.
+
+## Automatically reporting other panics
 
 To automatically report panics in your functions or methods, add
 `defer honeybadger.Monitor()` to the beginning of the function or method you
