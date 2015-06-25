@@ -27,9 +27,27 @@ honeybadger.Configure(honeybadger.Configuration{APIKey: "your api key"})
 You can also configure Honeybadger via environment variables. See
 [Configuration](#configuration) for more information.
 
-## Manually reporting panics
+## Automatically reporting panics
 
-To report a panic manually, use `honeybadger.Notify`:
+To automatically report panics in your functions or methods, add
+`defer honeybadger.Monitor()` to the beginning of the function or method you
+wish to monitor. To report all unhandled panics which happen in your application
+the following can be added to `main()`:
+
+```go
+func main() {
+  defer honeybadger.Monitor()
+  // application code...
+}
+```
+
+Note that `honeybadger.Monitor()` will re-panic after it reports the error, so
+make sure that it is only called once before recovering from the panic (or
+allowing the process to crash).
+
+## Manually reporting errors
+
+To report an error manually, use `honeybadger.Notify`:
 
 ```go
 if err != nil {
