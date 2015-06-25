@@ -85,6 +85,38 @@ The following options are available through `honeybadger.Configuration`:
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
 
+## Versioning
+
+We us [Semantic Versioning](http://semver.org/) to version releases of
+honeybadger-go. Because there is no official method to specify version
+dependencies in Go, we will do our best never to introduce a breaking change on
+the master branch of this repo after reaching version 1. Until we reach version
+1 there is a small chance that we may introduce a breaking change (changing the
+signature of a function or method, for example), but we'll always tag a new
+minor release and broadcast that we made the change.
+
+If you're concerned about versioning, there are two options:
+
+### Vendor your dependencies
+
+If you're really concerned about changes to this library, then copy it into your
+source control management system so that you can perform upgrades on your own
+time.
+
+### Use gopkg.in
+
+Rather than importing directly from GitHub, [gopkg.in](http://gopkg.in/) allows
+you to use their special URL format to transparently import a branch or tag from
+GitHub. Because we tag each release, using gopkg.in can enable you to depend
+explicitly on a certain version of this library. Importing from gopkg.in instead
+of directly from GitHub is as easy as:
+
+```go
+import "gopkg.in/honeybadger-io/honeybadger-go.v0"
+```
+
+Check out the [gopkg.in](http://gopkg.in/) homepage for more information on how
+to request versions.
 
 ## Changelog
 
