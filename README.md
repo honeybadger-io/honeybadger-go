@@ -1,4 +1,4 @@
-# honeybadger-go
+# honeybadger-go [![Build Status](https://travis-ci.org/honeybadger-io/honeybadger-go.svg?branch=master)](https://travis-ci.org/honeybadger-io/honeybadger-go)
 
 Go (golang) support for the :zap: [Honeybadger error
 notifier](https://www.honeybadger.io/). Receive instant notification of panics
