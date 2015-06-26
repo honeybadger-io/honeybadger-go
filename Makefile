@@ -1,6 +1,9 @@
 all: test
 
 prepare:
+	# dependencies
+	go get code.google.com/p/go-uuid/uuid
+	go get github.com/shirou/gopsutil/load
 	# needed for `make fmt`
 	go get golang.org/x/tools/cmd/goimports
 	# linters
