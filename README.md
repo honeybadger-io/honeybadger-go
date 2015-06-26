@@ -6,6 +6,9 @@ and errors in your Go applications.
 
 ## Installation
 
+*Note*: We recommend vendoring honeybadger-go in your application source until
+we have a stable (v1.0.0) release. See [Versioning](#versioning) for more info.
+
 To install, grab the package from GitHub:
 
 ```sh
@@ -119,7 +122,7 @@ The following options are available through `honeybadger.Configuration`:
 
 ## Versioning
 
-We us [Semantic Versioning](http://semver.org/) to version releases of
+We use [Semantic Versioning](http://semver.org/) to version releases of
 honeybadger-go. Because there is no official method to specify version
 dependencies in Go, we will do our best never to introduce a breaking change on
 the master branch of this repo after reaching version 1. Until we reach version
