@@ -69,6 +69,9 @@ func (client *Client) Monitor() {
 // Handler returns an http.Handler function which automatically reports panics
 // to Honeybadger and then re-panics.
 func (client *Client) Handler(h http.Handler) http.Handler {
+	if h == nil {
+		h = http.DefaultServeMux
+	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
