@@ -4,6 +4,19 @@ Go (golang) support for the :zap: [Honeybadger error
 notifier](https://www.honeybadger.io/). Receive instant notification of panics
 and errors in your Go applications.
 
+## Try it out
+
+To deploy a sample Go application which uses this library to report errors to
+Honeybadger.io:
+
+[![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy?template=https://github.com/honeybadger-io/crywolf-go)
+
+Don't forget to destroy the Heroku app after you're done so that you aren't
+charged for usage.
+
+You can also [download the sample
+application](https://github.com/honeybadger-io/crywolf-go) and run it locally.
+
 ## Installation
 
 > **Note:** We recommend vendoring honeybadger-go in your application source until
