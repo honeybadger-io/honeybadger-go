@@ -10,10 +10,10 @@ const VERSION = "0.0.1"
 
 var (
 	// client is a pre-defined "global" client.
-	client = New(Configuration{})
+	DefaultClient = New(Configuration{})
 
 	// Config is a pointer to the global client's Config.
-	Config = client.Config
+	Config = DefaultClient.Config
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
@@ -36,12 +36,12 @@ type Params url.Values
 
 // Configure updates configuration of the global client.
 func Configure(c Configuration) {
-	client.Configure(c)
+	DefaultClient.Configure(c)
 }
 
 // SetContext merges c Context into the Context of the global client.
 func SetContext(c Context) {
-	client.SetContext(c)
+	DefaultClient.SetContext(c)
 }
 
 // Notify reports the error err to the Honeybadger service.
@@ -52,7 +52,7 @@ func SetContext(c Context) {
 // It returns a string UUID which can be used to reference the error from the
 // Honeybadger service, and an error as a second argument.
 func Notify(err interface{}, extra ...interface{}) (string, error) {
-	return client.Notify(newError(err, 2), extra...)
+	return DefaultClient.Notify(newError(err, 2), extra...)
 }
 
 // Monitor is used to automatically notify Honeybadger service of panics which
@@ -66,7 +66,7 @@ func Notify(err interface{}, extra ...interface{}) (string, error) {
 // still up to the user to recover from panics if desired.
 func Monitor() {
 	if err := recover(); err != nil {
-		client.Notify(newError(err, 2))
+		DefaultClient.Notify(newError(err, 2))
 		panic(err)
 	}
 }
@@ -74,11 +74,11 @@ func Monitor() {
 // Flush blocks until all data (normally sent in the background) has been sent
 // to the Honeybadger service.
 func Flush() {
-	client.Flush()
+	DefaultClient.Flush()
 }
 
 // Handler returns an http.Handler function which automatically reports panics
 // to Honeybadger and then re-panics.
 func Handler(h http.Handler) http.Handler {
-	return client.Handler(h)
+	return DefaultClient.Handler(h)
 }

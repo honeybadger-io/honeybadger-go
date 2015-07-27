@@ -51,11 +51,11 @@ func setup(t *testing.T) {
 		},
 	)
 
-	*client.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+	*DefaultClient.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
 }
 
 func teardown() {
-	*client.Config = defaultConfig
+	*DefaultClient.Config = defaultConfig
 }
 
 func TestDefaultConfig(t *testing.T) {
