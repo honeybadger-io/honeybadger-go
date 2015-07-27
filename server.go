@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -58,7 +59,10 @@ func (s *server) Notify(feature Feature, payload Payload) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+	}()
 
 	switch resp.StatusCode {
 	case 201:
