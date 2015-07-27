@@ -25,7 +25,7 @@ type Configuration struct {
 	Backend  Backend
 }
 
-func (c1 Configuration) merge(c2 Configuration) Configuration {
+func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.APIKey != "" {
 		c1.APIKey = c2.APIKey
 	}
@@ -54,7 +54,7 @@ func (c1 Configuration) merge(c2 Configuration) Configuration {
 }
 
 func newConfig(c Configuration) *Configuration {
-	config := Configuration{
+	config := &Configuration{
 		APIKey:   getEnv("HONEYBADGER_API_KEY"),
 		Root:     getPWD(),
 		Env:      getEnv("HONEYBADGER_ENV"),
@@ -62,13 +62,14 @@ func newConfig(c Configuration) *Configuration {
 		Endpoint: getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
 		Timeout:  getTimeout(),
 		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
-	}.merge(c)
+	}
+	config.update(&c)
 
 	if config.Backend == nil {
-		config.Backend = newServerBackend(&config)
+		config.Backend = newServerBackend(config)
 	}
 
-	return &config
+	return config
 }
 
 func getTimeout() time.Duration {

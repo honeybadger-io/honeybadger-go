@@ -27,7 +27,7 @@ type Client struct {
 
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
-	*client.Config = client.Config.merge(config)
+	client.Config.update(&config)
 }
 
 // SetContext updates the client context with supplied context.
