@@ -26,6 +26,7 @@ func newServerBackend(config *Configuration) *server {
 			Timeout:   config.Timeout,
 		},
 		Timeout: &config.Timeout,
+		Silent:  &config.Silent,
 	}
 }
 
@@ -34,9 +35,15 @@ type server struct {
 	URL     *string
 	Timeout *time.Duration
 	Client  *http.Client
+	Silent  *bool
 }
 
 func (s *server) Notify(feature Feature, payload Payload) error {
+	silent := s.Silent
+	if silent != nil && *silent {
+		return nil
+	}
+
 	// Copy the value from the pointer in case it has changed in the
 	// configuration.
 	s.Client.Timeout = *s.Timeout
