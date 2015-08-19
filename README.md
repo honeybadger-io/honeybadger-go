@@ -168,7 +168,7 @@ to request versions.
 
 ## Changelog
 
-See https://github.com/honeybadger-io/honeybadger-go/releases
+See https://github.com/honeybadger-io/honeybadger-go/blob/master/CHANGELOG.md
 
 ## Contributing
 
