@@ -1,23 +1,15 @@
-# honeybadger-go [![Build Status](https://travis-ci.org/honeybadger-io/honeybadger-go.svg?branch=master)](https://travis-ci.org/honeybadger-io/honeybadger-go)
+# Honeybadger for Go
+
+[![Build Status](https://travis-ci.org/honeybadger-io/honeybadger-go.svg?branch=master)](https://travis-ci.org/honeybadger-io/honeybadger-go)
 
 Go (golang) support for the :zap: [Honeybadger error
 notifier](https://www.honeybadger.io/). Receive instant notification of panics
 and errors in your Go applications.
 
-## Try it out
+## Getting Started
 
-To deploy a sample Go application which uses this library to report errors to
-Honeybadger.io:
 
-[![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy?template=https://github.com/honeybadger-io/crywolf-go)
-
-Don't forget to destroy the Heroku app after you're done so that you aren't
-charged for usage.
-
-You can also [download the sample
-application](https://github.com/honeybadger-io/crywolf-go) and run it locally.
-
-## Installation
+### 1. Install the library
 
 > **Note:** We recommend vendoring honeybadger-go in your application source until
 we have a stable (v1.0.0) release. See [Versioning](#versioning) for more info.
@@ -34,6 +26,8 @@ Then add an import to your application code:
 import "github.com/honeybadger-io/honeybadger-go"
 ```
 
+### 2. Set your API key
+
 Finally, configure your API key:
 
 ```go
@@ -43,7 +37,9 @@ honeybadger.Configure(honeybadger.Configuration{APIKey: "your api key"})
 You can also configure Honeybadger via environment variables. See
 [Configuration](#configuration) for more information.
 
-## Automatically reporting panics during a server request
+### 3. Enable automatic panic reporting
+
+#### Panics during HTTP requests
 
 To automatically report panics which happen during an HTTP request, wrap your
 `http.Handler` function with `honeybadger.Handler`:
@@ -57,11 +53,10 @@ errors which happen inside `honeybadger.Handler`. Make sure you recover from
 panics after honeybadger's Handler has been executed to ensure all panics are
 reported.
 
-## Automatically reporting other panics
+### Unhandled Panics
 
-To automatically report panics in your functions or methods, add
-`defer honeybadger.Monitor()` to the beginning of the function or method you
-wish to monitor. To report all unhandled panics which happen in your application
+
+To report all unhandled panics which happen in your application
 the following can be added to `main()`:
 
 ```go
@@ -71,11 +66,7 @@ func main() {
 }
 ```
 
-Note that `honeybadger.Monitor()` will re-panic after it reports the error, so
-make sure that it is only called once before recovering from the panic (or
-allowing the process to crash).
-
-## Manually reporting errors
+### Manually Reporting Errors
 
 To report an error manually, use `honeybadger.Notify`:
 
@@ -85,42 +76,30 @@ if err != nil {
 }
 ```
 
-## Sending extra data to Honeybadger
+## Sample Application
 
-To send extra context data to Honeybadger, use `honeybadger.SetContext`:
+If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go). 
+
+You can deploy the sample app to your Heroku account by clicking this button:
+
+[![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy?template=https://github.com/honeybadger-io/crywolf-go)
+
+Don't forget to destroy the Heroku app after you're done so that you aren't charged for usage.
+
+The code for the sample app is [available on Github](https://github.com/honeybadger-io/crywolf-go), in case you'd like to read through it, or run it locally.
+
+
+## Advanced Configuration
+
+To set configuration options, use the `honeybadger.Configuration` method, like so:
 
 ```go
-honeybadger.SetContext(honeybadger.Context{
-  "badgers": true,
-  "user_id": 1,
+honeybadger.Configure(honeybadger.Configuration{
+  APIKey: "your api key", 
+  Env: "staging"
 })
 ```
-
-You can also add local context using an optional second argument when calling
-`honeybadger.Notify`:
-
-```go
-if err != nil {
-  honeybadger.Notify(err, honeybadger.Context{"user_id": 2})
-}
-```
-
-Local context keys override the keys set using `honeybadger.SetContext`.
-
-## Creating a new client
-
-In the same way that the log library provides a predefined "standard" logger,
-honeybadger defines a standard client which may be accessed directly via
-`honeybadger`. A new client may also be created by calling `honeybadger.New`:
-
-```go
-hb := honeybadger.New(honeybadger.Configuration{APIKey: "some other api key"})
-hb.Notify("This error was reported by an alternate client.")
-```
-
-## Configuration
-
-The following options are available through `honeybadger.Configuration`:
+The following options are available to you:
 
 |  Name | Type | Default | Example | Environment variable |
 | ----- | ---- | ------- | ------- | -------------------- |
@@ -132,6 +111,78 @@ The following options are available through `honeybadger.Configuration`:
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
+
+
+## Public Interface
+
+### `honeybadger.notify()`: Send an error to Honeybadger.
+
+If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you. 
+
+#### Examples:
+
+```go
+if err != nil {
+  honeybadger.Notify(err)
+}
+```
+
+You can also add local context using an optional second argument when calling
+`honeybadger.Notify`:
+
+```go
+if err != nil {
+  honeybadger.Notify(err, honeybadger.Context{"user_id": 2})
+}
+```
+
+---
+
+
+### `honeybadger.setContext()`: Set metadata to be sent if an error occurs
+
+This method lets you set context data that will be sent if an error should occur.
+
+For example, it's often useful to record the current user's ID when an error occurs in a web app. To do that, just use `setContext` to set the user id on each request. If an error occurs, the id will be reported with it.
+
+#### Examples:
+
+```go
+honeybadger.SetContext(honeybadger.Context{
+  "user_id": 1,
+})
+```
+
+---
+
+### ``defer honeybadger.Monitor()``: Automatically report panics from your functions
+
+To automatically report panics in your functions or methods, add
+`defer honeybadger.Monitor()` to the beginning of the function or method you wish to monitor.
+ 
+
+#### Examples:
+
+```go
+func risky() {
+  defer honeybadger.Monitor()
+  // risky business logic...
+}
+```
+
+__Important:__ `honeybadger.Monitor()` will re-panic after it reports the error, so make sure that it is only called once before recovering from the panic (or allowing the process to crash).
+
+
+---
+
+## Creating a new client
+
+In the same way that the log library provides a predefined "standard" logger, honeybadger defines a standard client which may be accessed directly via `honeybadger`. A new client may also be created by calling `honeybadger.New`:
+
+```go
+hb := honeybadger.New(honeybadger.Configuration{APIKey: "some other api key"})
+hb.Notify("This error was reported by an alternate client.")
+```
 
 ## Versioning
 
