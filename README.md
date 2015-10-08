@@ -53,7 +53,7 @@ errors which happen inside `honeybadger.Handler`. Make sure you recover from
 panics after honeybadger's Handler has been executed to ensure all panics are
 reported.
 
-### Unhandled Panics
+#### Unhandled Panics
 
 
 To report all unhandled panics which happen in your application
@@ -66,7 +66,7 @@ func main() {
 }
 ```
 
-### Manually Reporting Errors
+#### Manually Reporting Errors
 
 To report an error manually, use `honeybadger.Notify`:
 
