@@ -115,7 +115,7 @@ The following options are available to you:
 
 ## Public Interface
 
-### `honeybadger.notify()`: Send an error to Honeybadger.
+### `honeybadger.Notify()`: Send an error to Honeybadger.
 
 If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you. 
 
@@ -139,11 +139,11 @@ if err != nil {
 ---
 
 
-### `honeybadger.setContext()`: Set metadata to be sent if an error occurs
+### `honeybadger.SetContext()`: Set metadata to be sent if an error occurs
 
 This method lets you set context data that will be sent if an error should occur.
 
-For example, it's often useful to record the current user's ID when an error occurs in a web app. To do that, just use `setContext` to set the user id on each request. If an error occurs, the id will be reported with it.
+For example, it's often useful to record the current user's ID when an error occurs in a web app. To do that, just use `SetContext` to set the user id on each request. If an error occurs, the id will be reported with it.
 
 #### Examples:
 
