@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 )
@@ -17,6 +18,9 @@ var (
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
+
+	// Metrics is the feature for sending metrics.
+	Metrics = Feature{"metrics"}
 )
 
 // Feature references a resource provided by the API service. Its Endpoint maps
@@ -33,6 +37,17 @@ type CGIData hash
 
 // Params stores the form or url values from an HTTP request.
 type Params url.Values
+
+// hash is used internally to construct JSON payloads.
+type hash map[string]interface{}
+
+func (h *hash) toJSON() []byte {
+	out, err := json.Marshal(h)
+	if err == nil {
+		return out
+	}
+	panic(err)
+}
 
 // Configure updates configuration of the global client.
 func Configure(c Configuration) {
@@ -88,4 +103,10 @@ func Handler(h http.Handler) http.Handler {
 // will be skipped, otherwise it will be sent.
 func BeforeNotify(handler func(notice *Notice) error) {
 	DefaultClient.BeforeNotify(handler)
+}
+
+// Increment increments a counter metric. Metrics are sent to Honeybadger every
+// 60 seconds.
+func Increment(metric string, value int) {
+	DefaultClient.Increment(metric, value)
 }

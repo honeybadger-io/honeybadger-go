@@ -108,6 +108,7 @@ The following options are available to you:
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
+| MetricsInterval | `time.Duration` | 60 seconds | `60 * time.Second` | n/a |
 
 
 ## Public Interface

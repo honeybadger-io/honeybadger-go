@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -26,6 +27,7 @@ type Client struct {
 	context              *Context
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
+	metrics              *metricCollector
 }
 
 // Configure updates the client configuration with the supplied config.
@@ -88,25 +90,35 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 		h = http.DefaultServeMux
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		rw := newResponseWriter(w)
 		defer func() {
+			client.Increment(fmt.Sprintf("app.request.%v", rw.status), 1)
 			if err := recover(); err != nil {
 				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
 				panic(err)
 			}
 		}()
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(rw, r)
 	}
 	return http.HandlerFunc(fn)
+}
+
+// Increment increments a counter metric.
+func (client *Client) Increment(metric string, value int) {
+	client.metrics.increment(metric, value)
 }
 
 // New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
+	metrics := newMetricCollector(config, worker)
+
 	client := Client{
 		Config:  config,
 		worker:  worker,
 		context: &Context{},
+		metrics: metrics,
 	}
 
 	return &client
