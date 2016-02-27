@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // VERSION defines the version of the honeybadger package.
@@ -109,4 +110,9 @@ func BeforeNotify(handler func(notice *Notice) error) {
 // 60 seconds.
 func Increment(metric string, value int) {
 	DefaultClient.Increment(metric, value)
+}
+
+// Timing records a timing metric.
+func Timing(metric string, value time.Duration) {
+	DefaultClient.Timing(metric, value)
 }

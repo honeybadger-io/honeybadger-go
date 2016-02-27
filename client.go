@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // The Payload interface is implemented by any type which can be handled by the
@@ -91,8 +92,9 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		rw := newResponseWriter(w)
+		start := time.Now()
 		defer func() {
-			client.Increment(fmt.Sprintf("app.request.%v", rw.status), 1)
+			client.Timing(fmt.Sprintf("app.request.%v", rw.status), time.Since(start))
 			if err := recover(); err != nil {
 				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
 				panic(err)
@@ -106,6 +108,11 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 // Increment increments a counter metric.
 func (client *Client) Increment(metric string, value int) {
 	client.metrics.increment(metric, value)
+}
+
+// Timing records a timing metric.
+func (client *Client) Timing(metric string, value time.Duration) {
+	client.metrics.timing(metric, value)
 }
 
 // New returns a new instance of Client.
