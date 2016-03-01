@@ -14,6 +14,12 @@ import (
 
 type hash map[string]interface{}
 
+// ErrorClass represents the class name of the error which is sent to
+// Honeybadger.
+type ErrorClass struct {
+	Name string
+}
+
 // Notice is a representation of the error which is sent to Honeybadger, and
 // implements the Payload interface.
 type Notice struct {
@@ -142,6 +148,8 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 		switch t := thing.(type) {
 		case Context:
 			notice.setContext(t)
+		case ErrorClass:
+			notice.ErrorClass = t.Name
 		case Params:
 			notice.Params = t
 		case CGIData:

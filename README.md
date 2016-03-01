@@ -131,9 +131,15 @@ You can also add local context using an optional second argument when calling
 `honeybadger.Notify`:
 
 ```go
-if err != nil {
-  honeybadger.Notify(err, honeybadger.Context{"user_id": 2})
-}
+honeybadger.Notify(err, honeybadger.Context{"user_id": 2})
+```
+
+Honeybadger uses the error's class name to group similar errors together. If
+your error classes are often generic (such as `errors.errorString`), you can
+improve grouping by overriding the default with something more unique:
+
+```go
+honeybadger.Notify(err, honeybadger.ErrorClass{"CustomClassName"})
 ```
 
 ---

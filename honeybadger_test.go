@@ -110,6 +110,31 @@ func TestNotifyWithContext(t *testing.T) {
 	assertContext(t, payload, context)
 }
 
+func TestNotifyWithErrorClass(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	Notify("Cobras!", ErrorClass{"Badgers"})
+	Flush()
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_klass, _ := error_payload["class"].(string)
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	if sent_klass != "Badgers" {
+		t.Errorf("Custom error class should override default. expected=%v actual=%#v.", "Badgers", sent_klass)
+		return
+	}
+}
+
 // Helper functions.
 
 func assertContext(t *testing.T, payload hash, expected Context) {
