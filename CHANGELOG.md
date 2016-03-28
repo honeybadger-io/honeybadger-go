@@ -10,6 +10,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 - Add public access to default client (#5). -@kostyantyn
 - Support default server mux in Handler.
 - Support sending fingerprint in `honeybadger.Notify`.
+- Added BeforeNotify callback.
 
 ### Fixed
 - Drain the body of a response before closing it (#4). -@kostyantyn

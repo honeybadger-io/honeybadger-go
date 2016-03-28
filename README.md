@@ -182,6 +182,40 @@ func risky() {
 
 __Important:__ `honeybadger.Monitor()` will re-panic after it reports the error, so make sure that it is only called once before recovering from the panic (or allowing the process to crash).
 
+---
+
+### ``honeybadger.BeforeNotify()``: Add a callback to skip or modify error notification.
+
+Sometimes you may want to modify the data sent to Honeybadger right before an
+error notification is sent, or skip the notification entirely. To do so, add a
+callback using `honeybadger.BeforeNotify()`.
+
+#### Examples:
+
+```go
+honeybadger.BeforeNotify(
+  func(notice *honeybadger.Notice) error {
+    if notice.ErrorClass == "SkippedError" {
+      return fmt.Errorf("Skipping this notification")
+    }
+    // Return nil to send notification for all other classes.
+    return nil
+  }
+)
+```
+
+To modify information:
+
+```go
+honeybadger.BeforeNotify(
+  func(notice *honeybadger.Notice) error {
+    // Errors in Honeybadger will always have the class name "GenericError".
+    notice.ErrorClass = "GenericError"
+    return nil
+  }
+)
+```
+
 
 ---
 

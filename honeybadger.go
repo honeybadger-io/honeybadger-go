@@ -82,3 +82,10 @@ func Flush() {
 func Handler(h http.Handler) http.Handler {
 	return DefaultClient.Handler(h)
 }
+
+// BeforeNotify adds a callback function which is run before a notice is
+// reported to Honeybadger. If any function returns an error the notification
+// will be skipped, otherwise it will be sent.
+func BeforeNotify(handler func(notice *Notice) error) {
+	DefaultClient.BeforeNotify(handler)
+}

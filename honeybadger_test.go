@@ -160,6 +160,53 @@ func TestNotifyWithFingerprint(t *testing.T) {
 	}
 }
 
+func TestNotifyWithHandler(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	BeforeNotify(func(n *Notice) error {
+		n.Fingerprint = "foo bar baz"
+		return nil
+	})
+	Notify(errors.New("Cobras!"))
+	Flush()
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_fingerprint, _ := error_payload["fingerprint"].(string)
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	if sent_fingerprint != "foo bar baz" {
+		t.Errorf("Handler fingerprint should override default. expected=%v actual=%#v.", "foo bar baz", sent_fingerprint)
+		return
+	}
+}
+
+func TestNotifyWithHandlerError(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	err := fmt.Errorf("Skipping this notification")
+
+	BeforeNotify(func(n *Notice) error {
+		return err
+	})
+	_, notifyErr := Notify(errors.New("Cobras!"))
+	Flush()
+
+	if !testRequestCount(t, 0) {
+		return
+	}
+
+	if notifyErr != err {
+		t.Errorf("Notify should return error from handler. expected=%v actual=%#v.", err, notifyErr)
+		return
+	}
+}
+
 // Helper functions.
 
 func assertContext(t *testing.T, payload hash, expected Context) {
