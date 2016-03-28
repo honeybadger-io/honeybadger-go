@@ -5,6 +5,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [0.0.2] - 2016-03-28
 ### Added
 - Make newError function public (#6). -@kostyantyn
 - Add public access to default client (#5). -@kostyantyn
@@ -18,6 +19,5 @@ adheres to [Semantic Versioning](http://semver.org/).
 - Update config at pointer rather than dereferencing. (#2).
 
 ## [0.0.1] - 2015-06-25
-
 ### Added
 - Go client for Honeybadger.io.
