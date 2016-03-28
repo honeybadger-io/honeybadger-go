@@ -142,6 +142,13 @@ improve grouping by overriding the default with something more unique:
 honeybadger.Notify(err, honeybadger.ErrorClass{"CustomClassName"})
 ```
 
+To override grouping entirely, you can send a custom fingerprint. All errors
+with the same fingerprint will be grouped together:
+
+```go
+honeybadger.Notify(err, honeybadger.Fingerprint{"A unique string"})
+```
+
 ---
 
 

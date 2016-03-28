@@ -135,6 +135,31 @@ func TestNotifyWithErrorClass(t *testing.T) {
 	}
 }
 
+func TestNotifyWithFingerprint(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	Notify("Cobras!", Fingerprint{"Badgers"})
+	Flush()
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_fingerprint, _ := error_payload["fingerprint"].(string)
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	if sent_fingerprint != "Badgers" {
+		t.Errorf("Custom fingerprint should override default. expected=%v actual=%#v.", "Badgers", sent_fingerprint)
+		return
+	}
+}
+
 // Helper functions.
 
 func assertContext(t *testing.T, payload hash, expected Context) {
