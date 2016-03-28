@@ -11,9 +11,6 @@ and errors in your Go applications.
 
 ### 1. Install the library
 
-> **Note:** We recommend vendoring honeybadger-go in your application source until
-we have a stable (v1.0.0) release. See [Versioning](#versioning) for more info.
-
 To install, grab the package from GitHub:
 
 ```sh
