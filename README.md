@@ -86,7 +86,7 @@ Don't forget to destroy the Heroku app after you're done so that you aren't char
 The code for the sample app is [available on Github](https://github.com/honeybadger-io/crywolf-go), in case you'd like to read through it, or run it locally.
 
 
-## Advanced Configuration
+## Configuration
 
 To set configuration options, use the `honeybadger.Configuration` method, like so:
 
@@ -227,6 +227,33 @@ In the same way that the log library provides a predefined "standard" logger, ho
 hb := honeybadger.New(honeybadger.Configuration{APIKey: "some other api key"})
 hb.Notify("This error was reported by an alternate client.")
 ```
+
+## Grouping
+
+Honeybadger groups by the error class and the first line of the backtrace by
+default. In some cases it may be desirable to  provide your own grouping
+algorithm. One use case for this is `errors.errorString`. Because that type is
+used for many different types of errors in Go, Honeybadger will appear to group
+unrelated errors together. Here's an example of providing a custom fingerprint
+which will group `errors.errorString` by message instead:
+
+```go
+honeybadger.BeforeNotify(
+  func(notice *honeybadger.Notice) error {
+    if notice.ErrorClass == "errors.errorString" {
+      notice.Fingerprint = notice.Message
+    }
+    return nil
+  }
+)
+```
+
+Note that in this example, the backtrace is ignored. If you want to group by
+message *and* backtrace, you could append data from `notice.Backtrace` to the
+fingerprint string.
+
+An alternate approach would be to override `notice.ErrorClass` with a more
+specific class name that may be inferred from the message.
 
 ## Versioning
 
