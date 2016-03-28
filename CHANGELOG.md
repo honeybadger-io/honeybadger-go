@@ -9,6 +9,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 - Make newError function public (#6). -@kostyantyn
 - Add public access to default client (#5). -@kostyantyn
 - Support default server mux in Handler.
+- Allow error class to be customized from `honeybadger.Notify`.
 - Support sending fingerprint in `honeybadger.Notify`.
 - Added BeforeNotify callback.
 
