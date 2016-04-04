@@ -23,11 +23,11 @@ type ErrorClass struct {
 // Fingerprint represents the fingerprint of the error, which controls grouping
 // in Honeybadger.
 type Fingerprint struct {
-	content string
+	Content string
 }
 
 func (f *Fingerprint) String() string {
-	return f.content
+	return f.Content
 }
 
 // Notice is a representation of the error which is sent to Honeybadger, and
