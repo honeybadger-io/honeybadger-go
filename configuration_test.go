@@ -20,6 +20,7 @@ func TestUpdateConfig(t *testing.T) {
 		Logger:  logger,
 		Backend: backend,
 		Root:    "/tmp/foo",
+		Silent:  true,
 	})
 
 	if config.Logger != logger {
@@ -30,6 +31,9 @@ func TestUpdateConfig(t *testing.T) {
 	}
 	if config.Root != "/tmp/foo" {
 		t.Errorf("Expected config to update root expected=%#v actual=%#v", "/tmp/foo", config.Root)
+	}
+	if !config.Silent {
+		t.Errorf("Expected config to update silent expected=%#v actual=%#v", true, config.Silent)
 	}
 }
 
