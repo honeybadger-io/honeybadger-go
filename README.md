@@ -216,6 +216,17 @@ honeybadger.BeforeNotify(
 )
 ```
 
+---
+
+### ``honeybadger.NewNullBackend()``: Disable data reporting.
+
+`NewNullBackend` creates a backend which swallows all errors and does not send them to Honeybadger. This is useful for development and testing to disable sending unnecessary errors.
+
+#### Examples:
+
+```go
+honeybadger.Configure(honeybadger.Configuration{backend: honeybadger.NewNullBackend()})
+```
 
 ---
 
