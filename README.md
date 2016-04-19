@@ -225,7 +225,7 @@ honeybadger.BeforeNotify(
 #### Examples:
 
 ```go
-honeybadger.Configure(honeybadger.Configuration{backend: honeybadger.NewNullBackend()})
+honeybadger.Configure(honeybadger.Configuration{Backend: honeybadger.NewNullBackend()})
 ```
 
 ---
