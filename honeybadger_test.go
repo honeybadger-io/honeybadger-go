@@ -263,17 +263,29 @@ func testNoticePayload(t *testing.T, payload hash) bool {
 	return true
 }
 
-func TestMetricsHandlerCallsHandler(t *testing.T) {
-	handler := &MockedHandler{}
-	handler.On("ServeHTTP").Return()
+func TestHandlerCallsHandler(t *testing.T) {
+	mockHandler := &MockedHandler{}
+	mockHandler.On("ServeHTTP").Return()
 
-	metricsHandler := MetricsHandler(handler)
+	handler := Handler(mockHandler)
+	req, _ := http.NewRequest("GET", "", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	mockHandler.AssertCalled(t, "ServeHTTP")
+}
+
+func TestMetricsHandlerCallsHandler(t *testing.T) {
+	mockHandler := &MockedHandler{}
+	mockHandler.On("ServeHTTP").Return()
+
+	metricsHandler := MetricsHandler(mockHandler)
 
 	req, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	metricsHandler.ServeHTTP(w, req)
 
-	handler.AssertCalled(t, "ServeHTTP")
+	mockHandler.AssertCalled(t, "ServeHTTP")
 }
 
 func assertMethod(t *testing.T, r *http.Request, method string) {
