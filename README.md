@@ -50,17 +50,6 @@ errors which happen inside `honeybadger.Handler`. Make sure you recover from
 panics after honeybadger's Handler has been executed to ensure all panics are
 reported.
 
-### 4. Enable performance monitoring (Medium+ plans only)
-
-If your plan supports performance monitoring, you can set up your app to send
-request metrics using `honeybadger.MetricsHandler`. You can wrap any existing
-handlers, including `honeybadger.Handler` for error reporting:
-
-```go
-monitoredHandler := honeybadger.MetricsHandler(honeybadger.Handler(handler))
-log.Fatal(http.ListenAndServe(":8080", monitoredHandler)
-```
-
 #### Unhandled Panics
 
 
@@ -82,6 +71,17 @@ To report an error manually, use `honeybadger.Notify`:
 if err != nil {
   honeybadger.Notify(err)
 }
+```
+
+### 4. Enable performance monitoring (Medium+ plans only)
+
+If your plan supports performance monitoring, you can set up your app to send
+request metrics using `honeybadger.MetricsHandler`. You can wrap any existing
+handlers, including `honeybadger.Handler` for error reporting:
+
+```go
+monitoredHandler := honeybadger.MetricsHandler(honeybadger.Handler(handler))
+log.Fatal(http.ListenAndServe(":8080", monitoredHandler)
 ```
 
 ## Sample Application
