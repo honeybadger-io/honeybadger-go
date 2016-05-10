@@ -99,6 +99,12 @@ func Handler(h http.Handler) http.Handler {
 	return DefaultClient.Handler(h)
 }
 
+// MetricsHandler returns an http.Handler function which automatically reports
+// request metrics to Honeybadger.
+func MetricsHandler(h http.Handler) http.Handler {
+	return DefaultClient.MetricsHandler(h)
+}
+
 // BeforeNotify adds a callback function which is run before a notice is
 // reported to Honeybadger. If any function returns an error the notification
 // will be skipped, otherwise it will be sent.

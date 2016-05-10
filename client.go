@@ -91,14 +91,28 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 		h = http.DefaultServeMux
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		rw := newResponseWriter(w)
-		start := time.Now()
 		defer func() {
-			client.Timing(fmt.Sprintf("app.request.%v", rw.status), time.Since(start))
 			if err := recover(); err != nil {
 				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
 				panic(err)
 			}
+		}()
+		h.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+// MetricsHandler returns an http.Handler function which automatically reports
+// request metrics to Honeybadger.
+func (client *Client) MetricsHandler(h http.Handler) http.Handler {
+	if h == nil {
+		h = http.DefaultServeMux
+	}
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		rw := newResponseWriter(w)
+		start := time.Now()
+		defer func() {
+			client.Timing(fmt.Sprintf("app.request.%v", rw.status), time.Since(start))
 		}()
 		h.ServeHTTP(rw, r)
 	}
