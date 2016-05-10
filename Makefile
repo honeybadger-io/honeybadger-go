@@ -4,6 +4,9 @@ deps:
 	# dependencies
 	go get github.com/pborman/uuid
 	go get github.com/shirou/gopsutil/load
+	# testing libs
+	go get github.com/stretchr/testify/mock
+	go get github.com/stretchr/testify/assert
 
 prepare: deps
 	# needed for `make fmt`
@@ -13,9 +16,6 @@ prepare: deps
 	gometalinter --install
 	# needed for `make cover`
 	go get golang.org/x/tools/cmd/cover
-	# testing libs
-	go get github.com/stretchr/testify/mock
-	go get github.com/stretchr/testify/assert
 	@echo Now you should be ready to run "make"
 
 test:
