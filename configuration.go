@@ -15,14 +15,15 @@ type Logger interface {
 
 // Configuration manages the configuration for the client.
 type Configuration struct {
-	APIKey   string
-	Root     string
-	Env      string
-	Hostname string
-	Endpoint string
-	Timeout  time.Duration
-	Logger   Logger
-	Backend  Backend
+	APIKey          string
+	Root            string
+	Env             string
+	Hostname        string
+	Endpoint        string
+	Timeout         time.Duration
+	Logger          Logger
+	Backend         Backend
+	MetricsInterval time.Duration
 }
 
 func (c1 *Configuration) update(c2 *Configuration) *Configuration {
@@ -50,18 +51,22 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.Backend != nil {
 		c1.Backend = c2.Backend
 	}
+	if c2.MetricsInterval > 0 {
+		c1.MetricsInterval = c2.MetricsInterval
+	}
 	return c1
 }
 
 func newConfig(c Configuration) *Configuration {
 	config := &Configuration{
-		APIKey:   getEnv("HONEYBADGER_API_KEY"),
-		Root:     getPWD(),
-		Env:      getEnv("HONEYBADGER_ENV"),
-		Hostname: getHostname(),
-		Endpoint: getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
-		Timeout:  getTimeout(),
-		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
+		APIKey:          getEnv("HONEYBADGER_API_KEY"),
+		Root:            getPWD(),
+		Env:             getEnv("HONEYBADGER_ENV"),
+		Hostname:        getHostname(),
+		Endpoint:        getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
+		Timeout:         getTimeout(),
+		Logger:          log.New(os.Stderr, "[honeybadger] ", log.Flags()),
+		MetricsInterval: 60 * time.Second,
 	}
 	config.update(&c)
 

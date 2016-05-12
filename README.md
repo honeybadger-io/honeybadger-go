@@ -73,6 +73,17 @@ if err != nil {
 }
 ```
 
+### 4. Enable performance monitoring (Medium+ plans only)
+
+If your plan supports performance monitoring, you can set up your app to send
+request metrics using `honeybadger.MetricsHandler`. You can wrap any existing
+handlers, including `honeybadger.Handler` for error reporting:
+
+```go
+monitoredHandler := honeybadger.MetricsHandler(honeybadger.Handler(handler))
+log.Fatal(http.ListenAndServe(":8080", monitoredHandler)
+```
+
 ## Sample Application
 
 If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go). 
@@ -108,6 +119,7 @@ The following options are available to you:
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
+| MetricsInterval | `time.Duration` | 60 seconds | `60 * time.Second` | n/a |
 
 
 ## Public Interface

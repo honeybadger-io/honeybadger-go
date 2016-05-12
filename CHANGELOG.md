@@ -4,6 +4,8 @@ CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+### Added
+- Use `honeybadger.MetricsHandler` to send us request metrics!
 
 ## [0.0.3] - 2016-04-13
 ### Added

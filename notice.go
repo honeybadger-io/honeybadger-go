@@ -12,8 +12,6 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-type hash map[string]interface{}
-
 // ErrorClass represents the class name of the error which is sent to
 // Honeybadger.
 type ErrorClass struct {

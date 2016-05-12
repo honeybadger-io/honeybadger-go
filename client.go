@@ -1,8 +1,10 @@
 package honeybadger
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // The Payload interface is implemented by any type which can be handled by the
@@ -26,6 +28,7 @@ type Client struct {
 	context              *Context
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
+	metrics              *metricCollector
 }
 
 // Configure updates the client configuration with the supplied config.
@@ -99,14 +102,44 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+// MetricsHandler returns an http.Handler function which automatically reports
+// request metrics to Honeybadger.
+func (client *Client) MetricsHandler(h http.Handler) http.Handler {
+	if h == nil {
+		h = http.DefaultServeMux
+	}
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		rw := newResponseWriter(w)
+		start := time.Now()
+		defer func() {
+			client.Timing(fmt.Sprintf("app.request.%v", rw.status), time.Since(start))
+		}()
+		h.ServeHTTP(rw, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+// Increment increments a counter metric.
+func (client *Client) Increment(metric string, value int) {
+	client.metrics.increment(metric, value)
+}
+
+// Timing records a timing metric.
+func (client *Client) Timing(metric string, value time.Duration) {
+	client.metrics.timing(metric, value)
+}
+
 // New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
+	metrics := newMetricCollector(config, worker)
+
 	client := Client{
 		Config:  config,
 		worker:  worker,
 		context: &Context{},
+		metrics: metrics,
 	}
 
 	return &client
