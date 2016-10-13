@@ -20,7 +20,7 @@ var (
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
 
-	// Metrics is the feature for sending metrics.
+	// Metrics is deprecated.
 	Metrics = Feature{"metrics"}
 )
 
@@ -99,8 +99,7 @@ func Handler(h http.Handler) http.Handler {
 	return DefaultClient.Handler(h)
 }
 
-// MetricsHandler returns an http.Handler function which automatically reports
-// request metrics to Honeybadger.
+// MetricsHandler is deprecated.
 func MetricsHandler(h http.Handler) http.Handler {
 	return DefaultClient.MetricsHandler(h)
 }
@@ -112,13 +111,12 @@ func BeforeNotify(handler func(notice *Notice) error) {
 	DefaultClient.BeforeNotify(handler)
 }
 
-// Increment increments a counter metric. Metrics are sent to Honeybadger every
-// 60 seconds.
+// Increment is deprecated.
 func Increment(metric string, value int) {
 	DefaultClient.Increment(metric, value)
 }
 
-// Timing records a timing metric.
+// Timing is deprecated.
 func Timing(metric string, value time.Duration) {
 	DefaultClient.Timing(metric, value)
 }
