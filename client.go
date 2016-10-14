@@ -1,7 +1,6 @@
 package honeybadger
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -28,7 +27,6 @@ type Client struct {
 	context              *Context
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
-	metrics              *metricCollector
 }
 
 // Configure updates the client configuration with the supplied config.
@@ -102,44 +100,37 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-// MetricsHandler returns an http.Handler function which automatically reports
-// request metrics to Honeybadger.
+// MetricsHandler is deprecated.
 func (client *Client) MetricsHandler(h http.Handler) http.Handler {
+	client.Config.Logger.Printf("DEPRECATION WARNING: honeybadger.MetricsHandler() has no effect and will be removed.")
 	if h == nil {
 		h = http.DefaultServeMux
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		rw := newResponseWriter(w)
-		start := time.Now()
-		defer func() {
-			client.Timing(fmt.Sprintf("app.request.%v", rw.status), time.Since(start))
-		}()
-		h.ServeHTTP(rw, r)
+		h.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
 }
 
-// Increment increments a counter metric.
+// Increment is deprecated.
 func (client *Client) Increment(metric string, value int) {
-	client.metrics.increment(metric, value)
+	client.Config.Logger.Printf("DEPRECATION WARNING: honeybadger.Increment() has no effect and will be removed.")
 }
 
-// Timing records a timing metric.
+// Timing is deprecated.
 func (client *Client) Timing(metric string, value time.Duration) {
-	client.metrics.timing(metric, value)
+	client.Config.Logger.Printf("DEPRECATION WARNING: honeybadger.Timing() has no effect and will be removed.")
 }
 
 // New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
-	metrics := newMetricCollector(config, worker)
 
 	client := Client{
 		Config:  config,
 		worker:  worker,
 		context: &Context{},
-		metrics: metrics,
 	}
 
 	return &client
