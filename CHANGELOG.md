@@ -4,6 +4,8 @@ CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+
+## [0.2.0] - 2016-10-14
 ### Changed
 - Sunset performance metrics. See
   http://blog.honeybadger.io/sunsetting-performance-metrics/
