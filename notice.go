@@ -96,7 +96,7 @@ func getStats() *hash {
 		}
 	}
 
-	if stat, err := load.Avg(); err == nil {
+	if stat, err := load.LoadAvg(); err == nil {
 		l = &hash{
 			"one":     stat.Load1,
 			"five":    stat.Load5,

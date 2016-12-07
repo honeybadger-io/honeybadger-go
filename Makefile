@@ -3,6 +3,7 @@ all: test
 deps:
 	# dependencies
 	go get github.com/pborman/uuid
+	go clean -i -n github.com/shirou/gopsutil/load...
 	go get github.com/shirou/gopsutil/load
 	# testing libs
 	go get github.com/stretchr/testify/mock
