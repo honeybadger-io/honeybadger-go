@@ -169,6 +169,25 @@ func TestNotifyWithFingerprint(t *testing.T) {
 	}
 }
 
+func TestMonitor(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	defer func() {
+		_ = recover()
+
+		if !testRequestCount(t, 1) {
+			return
+		}
+
+		testNoticePayload(t, requests[0].decodeJSON())
+	}()
+
+	defer Monitor()
+
+	panic("Cobras!")
+}
+
 func TestNotifyWithHandler(t *testing.T) {
 	setup(t)
 	defer teardown()
