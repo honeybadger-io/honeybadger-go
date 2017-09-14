@@ -5,7 +5,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 ### Fixed
-- Flush notices on panic. Fixes #27
+- Previously, if you put `honeybadger.Monitor()` in your main func, the app could finish and exit before the error was sent to honeybadger. We now Flush notices before re-panicking.
 
 ## [0.2.0] - 2016-10-14
 ### Changed
