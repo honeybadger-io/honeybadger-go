@@ -8,7 +8,7 @@ import (
 )
 
 // VERSION defines the version of the honeybadger package.
-const VERSION = "0.2.0"
+const VERSION = "0.2.1"
 
 var (
 	// client is a pre-defined "global" client.
