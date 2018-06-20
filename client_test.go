@@ -62,7 +62,7 @@ func TestClientConcurrentContext(t *testing.T) {
 	context := client.context.internal
 
 	if context["foo"] != "bar" {
-		t.Errorf("Expected notice to contain context. expected=%#v result=%#v", "bar", context["foo"])
+		t.Errorf("Expected context value. expected=%#v result=%#v", "bar", context["foo"])
 	}
 }
 

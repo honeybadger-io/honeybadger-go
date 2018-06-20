@@ -21,7 +21,7 @@ func TestContextSync(t *testing.T) {
 	context := instance.internal
 
 	if context["foo"] != "bar" {
-		t.Errorf("Expected notice to contain context. expected=%#v result=%#v", "bar", context["foo"])
+		t.Errorf("Expected context value. expected=%#v result=%#v", "bar", context["foo"])
 	}
 }
 
