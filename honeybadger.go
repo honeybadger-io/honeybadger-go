@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // VERSION defines the version of the honeybadger package.
@@ -19,9 +18,6 @@ var (
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
-
-	// Metrics is deprecated.
-	Metrics = Feature{"metrics"}
 )
 
 // Feature references a resource provided by the API service. Its Endpoint maps
@@ -100,24 +96,9 @@ func Handler(h http.Handler) http.Handler {
 	return DefaultClient.Handler(h)
 }
 
-// MetricsHandler is deprecated.
-func MetricsHandler(h http.Handler) http.Handler {
-	return DefaultClient.MetricsHandler(h)
-}
-
 // BeforeNotify adds a callback function which is run before a notice is
 // reported to Honeybadger. If any function returns an error the notification
 // will be skipped, otherwise it will be sent.
 func BeforeNotify(handler func(notice *Notice) error) {
 	DefaultClient.BeforeNotify(handler)
-}
-
-// Increment is deprecated.
-func Increment(metric string, value int) {
-	DefaultClient.Increment(metric, value)
-}
-
-// Timing is deprecated.
-func Timing(metric string, value time.Duration) {
-	DefaultClient.Timing(metric, value)
 }

@@ -294,19 +294,6 @@ func TestHandlerCallsHandler(t *testing.T) {
 	mockHandler.AssertCalled(t, "ServeHTTP")
 }
 
-func TestMetricsHandlerCallsHandler(t *testing.T) {
-	mockHandler := &MockedHandler{}
-	mockHandler.On("ServeHTTP").Return()
-
-	metricsHandler := MetricsHandler(mockHandler)
-
-	req, _ := http.NewRequest("GET", "", nil)
-	w := httptest.NewRecorder()
-	metricsHandler.ServeHTTP(w, req)
-
-	mockHandler.AssertCalled(t, "ServeHTTP")
-}
-
 func assertMethod(t *testing.T, r *http.Request, method string) {
 	if r.Method != method {
 		t.Errorf("Unexpected request method. actual=%#v expected=%#v", r.Method, method)

@@ -4,6 +4,7 @@ CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+- Remove deprecated metrics methods.
 
 ## [0.2.1] - 2017-09-14
 ### Fixed
