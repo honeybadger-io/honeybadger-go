@@ -35,6 +35,9 @@ type CGIData hash
 // Params stores the form or url values from an HTTP request.
 type Params url.Values
 
+// Tags represents tags of the error which is classified errors in Honeybadger.
+type Tags []string
+
 // hash is used internally to construct JSON payloads.
 type hash map[string]interface{}
 

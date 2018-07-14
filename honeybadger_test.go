@@ -144,6 +144,31 @@ func TestNotifyWithErrorClass(t *testing.T) {
 	}
 }
 
+func TestNotifyWithTags(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	Notify("Cobras!", Tags{"timeout", "http"})
+	Flush()
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_tags, _ := error_payload["tags"].(string)
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	if sent_tags != "timeout, http" {
+		t.Errorf("Custom error class should override default. expected=%v actual=%#v.", "timeout, http", sent_tags)
+		return
+	}
+}
+
 func TestNotifyWithFingerprint(t *testing.T) {
 	setup(t)
 	defer teardown()

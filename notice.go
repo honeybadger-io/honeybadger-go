@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -36,6 +37,7 @@ type Notice struct {
 	Token        string
 	ErrorMessage string
 	ErrorClass   string
+	Tags         []string
 	Hostname     string
 	Env          string
 	Backtrace    []*Frame
@@ -59,6 +61,7 @@ func (n *Notice) asJSON() *hash {
 			"token":       n.Token,
 			"message":     n.ErrorMessage,
 			"class":       n.ErrorClass,
+			"tags":        strings.Join(n.Tags, ", "),
 			"backtrace":   n.Backtrace,
 			"fingerprint": n.Fingerprint,
 		},
@@ -160,6 +163,10 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 			notice.setContext(t)
 		case ErrorClass:
 			notice.ErrorClass = t.Name
+		case Tags:
+			for _, tag := range t {
+				notice.Tags = append(notice.Tags, tag)
+			}
 		case Fingerprint:
 			notice.Fingerprint = t.String()
 		case Params:
