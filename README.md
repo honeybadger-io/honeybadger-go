@@ -147,6 +147,12 @@ with the same fingerprint will be grouped together:
 honeybadger.Notify(err, honeybadger.Fingerprint{"A unique string"})
 ```
 
+To tag errors in Honeybadger:
+
+```go
+honeybadger.Notify(err, honeybadger.Tags{"timeout", "http"})
+```
+
 ---
 
 
