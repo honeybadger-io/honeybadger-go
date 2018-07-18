@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/pborman/uuid"
@@ -140,6 +141,31 @@ func TestNotifyWithErrorClass(t *testing.T) {
 
 	if sent_klass != "Badgers" {
 		t.Errorf("Custom error class should override default. expected=%v actual=%#v.", "Badgers", sent_klass)
+		return
+	}
+}
+
+func TestNotifyWithTags(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	Notify("Cobras!", Tags{"timeout", "http"})
+	Flush()
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_tags, _ := error_payload["tags"].([]interface{})
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	if got, want := sent_tags, []interface{}{"timeout", "http"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Custom error class should override default. expected=%#v actual=%#v.", want, got)
 		return
 	}
 }
