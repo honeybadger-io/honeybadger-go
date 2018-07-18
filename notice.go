@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -61,7 +60,7 @@ func (n *Notice) asJSON() *hash {
 			"token":       n.Token,
 			"message":     n.ErrorMessage,
 			"class":       n.ErrorClass,
-			"tags":        strings.Join(n.Tags, ", "),
+			"tags":        n.Tags,
 			"backtrace":   n.Backtrace,
 			"fingerprint": n.Fingerprint,
 		},
