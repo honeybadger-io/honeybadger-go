@@ -5,6 +5,10 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [0.4.0] - 2018-07-18
+### Added
+- Ability to tag errors. -@izumin5210
+
 ## [0.3.0] - 2018-07-03
 ### Changed
 - Remove deprecated metrics methods.
