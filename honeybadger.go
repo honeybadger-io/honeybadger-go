@@ -118,6 +118,8 @@ func Flush() {
 
 // Handler returns an http.Handler function which automatically reports panics
 // to Honeybadger and then re-panics.
+//
+// The request context is what's passed to notify.
 func Handler(h http.Handler) http.Handler {
 	return DefaultClient.Handler(h)
 }
