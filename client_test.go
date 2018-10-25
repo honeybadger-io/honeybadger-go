@@ -3,8 +3,6 @@ package honeybadger
 import (
 	"context"
 	"testing"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -45,7 +43,6 @@ func TestClientContext(t *testing.T) {
 	}
 
 	if context == nil {
-		spew.Dump(ctx)
 		t.Errorf("context value not placed in context.Context")
 		t.FailNow()
 	}
