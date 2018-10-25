@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
