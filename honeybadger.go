@@ -55,8 +55,8 @@ func Configure(c Configuration) {
 }
 
 // SetContext merges c Context into the Context of the global client.
-func SetContext(c Context) {
-	DefaultClient.SetContext(c)
+func SetContext(ctx context.Context, c Context) context.Context {
+	return DefaultClient.SetContext(ctx, c)
 }
 
 // Notify reports the error err to the Honeybadger service.
@@ -66,8 +66,8 @@ func SetContext(c Context) {
 //
 // It returns a string UUID which can be used to reference the error from the
 // Honeybadger service, and an error as a second argument.
-func Notify(err interface{}, extra ...interface{}) (string, error) {
-	return DefaultClient.Notify(newError(err, 2), extra...)
+func Notify(ctx context.Context, err interface{}, extra ...interface{}) (string, error) {
+	return DefaultClient.Notify(ctx, newError(err, 2), extra...)
 }
 
 // Monitor is used to automatically notify Honeybadger service of panics which
