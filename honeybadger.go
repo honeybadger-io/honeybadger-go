@@ -79,9 +79,32 @@ func Notify(ctx context.Context, err interface{}, extra ...interface{}) (string,
 // 	}
 // The Monitor function re-panics after the notification has been sent, so it's
 // still up to the user to recover from panics if desired.
+//
+// The Monitor function doesn't have access to any set context from `SetContext`
+// calls.
 func Monitor() {
 	if err := recover(); err != nil {
-		DefaultClient.Notify(newError(err, 2))
+		ctx := context.Background()
+		DefaultClient.Notify(ctx, newError(err, 2))
+		DefaultClient.Flush()
+		panic(err)
+	}
+}
+
+// MonitorCtx is used to automatically notify Honeybadger service of panics which
+// happen inside the current function. In order to monitor for panics, defer a
+// call to MonitorCtx. For example:
+//  func handler(ctx context.Context) {
+//    defer honeybadger.MonitorCtx(ctx)
+//    // Do risky stuff...
+//  }
+// The MonitorCtx function re-panics after the notification has been sent, so it's
+// still up to the user to recover from panics if desired.
+//
+// Has access to any context set when using `SetCtx`
+func MonitorCtx(ctx context.Context) {
+	if err := recover(); err != nil {
+		DefaultClient.Notify(ctx, newError(err, 2))
 		DefaultClient.Flush()
 		panic(err)
 	}
