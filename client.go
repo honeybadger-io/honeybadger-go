@@ -74,8 +74,14 @@ func (client *Client) BeforeNotify(handler func(notice *Notice) error) {
 }
 
 // Notify reports the error err to the Honeybadger service.
-func (client *Client) Notify(err interface{}, extra ...interface{}) (string, error) {
-	extra = append([]interface{}{client.context.internal}, extra...)
+func (client *Client) Notify(ctx context.Context, err interface{}, extra ...interface{}) (string, error) {
+	val, ok := ctx.Value(honeybadgerCtxKey).(*contextSync)
+	if ok {
+		val.Lock()
+		extra = append([]interface{}{val.internal}, extra...)
+		val.Unlock()
+	}
+
 	notice := newNotice(client.Config, newError(err, 2), extra...)
 	for _, handler := range client.beforeNotifyHandlers {
 		if err := handler(notice); err != nil {
