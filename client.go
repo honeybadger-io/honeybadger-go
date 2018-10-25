@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -39,8 +40,25 @@ func (client *Client) Configure(config Configuration) {
 }
 
 // SetContext updates the client context with supplied context.
-func (client *Client) SetContext(context Context) {
-	client.context.Update(context)
+func (client *Client) SetContext(ctx context.Context, val Context) context.Context {
+	var clientContext *contextSync
+
+	tmp := ctx.Value(honeybadgerCtxKey)
+	if tmp == nil {
+		clientContext = &contextSync{
+			internal: Context{},
+		}
+	} else {
+		if cc, ok := tmp.(*contextSync); ok {
+			clientContext = cc
+		} else {
+			panic(noCastErr)
+		}
+	}
+
+	clientContext.Update(val)
+
+	return context.WithValue(ctx, honeybadgerCtxKey, clientContext)
 }
 
 // Flush blocks until the worker has processed its queue.
