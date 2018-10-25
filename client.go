@@ -103,9 +103,9 @@ func (client *Client) Notify(ctx context.Context, err interface{}, extra ...inte
 
 // Monitor automatically reports panics which occur in the function it's called
 // from. Must be deferred.
-func (client *Client) Monitor() {
+func (client *Client) Monitor(ctx context.Context) {
 	if err := recover(); err != nil {
-		client.Notify(newError(err, 2))
+		client.Notify(ctx, newError(err, 2))
 		client.Flush()
 		panic(err)
 	}
