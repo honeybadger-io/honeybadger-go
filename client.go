@@ -1,11 +1,14 @@
 package honeybadger
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
 
 const honeybadgerCtxKey = "honeybadger-go-ctx"
+
+var noCastErr = fmt.Errorf("unable to cast value from context properly")
 
 // The Payload interface is implemented by any type which can be handled by the
 // Backend interface.
