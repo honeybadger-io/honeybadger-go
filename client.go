@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const honeybadgerCtxKey = "honeybadger-go-ctx"
+
 // The Payload interface is implemented by any type which can be handled by the
 // Backend interface.
 type Payload interface {
