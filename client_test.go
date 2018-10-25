@@ -1,8 +1,10 @@
 package honeybadger
 
 import (
+	"context"
 	"testing"
-	"sync"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -32,10 +34,21 @@ func TestConfigureClientEndpoint(t *testing.T) {
 func TestClientContext(t *testing.T) {
 	client := New(Configuration{})
 
-	client.SetContext(Context{"foo": "bar"})
-	client.SetContext(Context{"bar": "baz"})
+	ctx := context.Background()
 
-	context := client.context.internal
+	ctx = client.SetContext(ctx, Context{"foo": "bar"})
+	ctx = client.SetContext(ctx, Context{"bar": "baz"})
+
+	var context Context
+	if tmp, ok := ctx.Value(honeybadgerCtxKey).(*contextSync); ok {
+		context = tmp.internal
+	}
+
+	if context == nil {
+		spew.Dump(ctx)
+		t.Errorf("context value not placed in context.Context")
+		t.FailNow()
+	}
 
 	if context["foo"] != "bar" {
 		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "bar", context["foo"])
@@ -44,29 +57,4 @@ func TestClientContext(t *testing.T) {
 	if context["bar"] != "baz" {
 		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "baz", context["bar"])
 	}
-}
-
-func TestClientConcurrentContext(t *testing.T) {
-	var wg sync.WaitGroup
-
-	client     := New(Configuration{})
-	newContext := Context{"foo":"bar"}
-
-	wg.Add(2)
-
-	go updateContext(&wg, client, newContext)
-	go updateContext(&wg, client, newContext)
-
-	wg.Wait()
-
-	context := client.context.internal
-
-	if context["foo"] != "bar" {
-		t.Errorf("Expected context value. expected=%#v result=%#v", "bar", context["foo"])
-	}
-}
-
-func updateContext(wg *sync.WaitGroup, client *Client, context Context) {
-	client.SetContext(context)
-	wg.Done()
 }
