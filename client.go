@@ -29,7 +29,6 @@ type noticeHandler func(*Notice) error
 // the configuration and implements the public API.
 type Client struct {
 	Config               *Configuration
-	context              *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
 }
@@ -135,9 +134,8 @@ func New(c Configuration) *Client {
 	worker := newBufferedWorker(config)
 
 	client := Client{
-		Config:  config,
-		worker:  worker,
-		context: newContextSync(),
+		Config: config,
+		worker: worker,
 	}
 
 	return &client
