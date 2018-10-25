@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,7 +86,9 @@ func TestNotify(t *testing.T) {
 	setup(t)
 	defer teardown()
 
-	res, _ := Notify(errors.New("Cobras!"))
+	ctx := context.Background()
+
+	res, _ := Notify(ctx, errors.New("Cobras!"))
 
 	if uuid.Parse(res) == nil {
 		t.Errorf("Expected Notify() to return a UUID. actual=%#v", res)
@@ -104,8 +107,9 @@ func TestNotifyWithContext(t *testing.T) {
 	setup(t)
 	defer teardown()
 
+	ctx := context.Background()
 	context := Context{"foo": "bar"}
-	Notify("Cobras!", context)
+	Notify(ctx, "Cobras!", context)
 	Flush()
 
 	if !testRequestCount(t, 1) {
@@ -124,7 +128,8 @@ func TestNotifyWithErrorClass(t *testing.T) {
 	setup(t)
 	defer teardown()
 
-	Notify("Cobras!", ErrorClass{"Badgers"})
+	ctx := context.Background()
+	Notify(ctx, "Cobras!", ErrorClass{"Badgers"})
 	Flush()
 
 	if !testRequestCount(t, 1) {
@@ -149,7 +154,8 @@ func TestNotifyWithTags(t *testing.T) {
 	setup(t)
 	defer teardown()
 
-	Notify("Cobras!", Tags{"timeout", "http"})
+	ctx := context.Background()
+	Notify(ctx, "Cobras!", Tags{"timeout", "http"})
 	Flush()
 
 	if !testRequestCount(t, 1) {
@@ -174,7 +180,8 @@ func TestNotifyWithFingerprint(t *testing.T) {
 	setup(t)
 	defer teardown()
 
-	Notify("Cobras!", Fingerprint{"Badgers"})
+	ctx := context.Background()
+	Notify(ctx, "Cobras!", Fingerprint{"Badgers"})
 	Flush()
 
 	if !testRequestCount(t, 1) {
@@ -222,7 +229,8 @@ func TestNotifyWithHandler(t *testing.T) {
 		n.Fingerprint = "foo bar baz"
 		return nil
 	})
-	Notify(errors.New("Cobras!"))
+	ctx := context.Background()
+	Notify(ctx, errors.New("Cobras!"))
 	Flush()
 
 	payload := requests[0].decodeJSON()
@@ -248,7 +256,8 @@ func TestNotifyWithHandlerError(t *testing.T) {
 	BeforeNotify(func(n *Notice) error {
 		return err
 	})
-	_, notifyErr := Notify(errors.New("Cobras!"))
+	ctx := context.Background()
+	_, notifyErr := Notify(ctx, errors.New("Cobras!"))
 	Flush()
 
 	if !testRequestCount(t, 0) {
