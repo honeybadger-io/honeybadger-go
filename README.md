@@ -69,7 +69,7 @@ To report an error manually, use `honeybadger.Notify`:
 
 ```go
 if err != nil {
-  honeybadger.Notify(err)
+  honeybadger.Notify(ctx, err)
 }
 ```
 
@@ -113,7 +113,7 @@ The following options are available to you:
 
 ## Public Interface
 
-### `honeybadger.Notify()`: Send an error to Honeybadger.
+### `honeybadger.Notify(context,Context, interface{}, ...interface{})`: Send an error to Honeybadger.
 
 If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you. 
 
@@ -121,7 +121,7 @@ If you've handled a panic in your code, but would still like to report the error
 
 ```go
 if err != nil {
-  honeybadger.Notify(err)
+  honeybadger.Notify(ctx, err)
 }
 ```
 
@@ -129,7 +129,7 @@ You can also add local context using an optional second argument when calling
 `honeybadger.Notify`:
 
 ```go
-honeybadger.Notify(err, honeybadger.Context{"user_id": 2})
+honeybadger.Notify(ctx, err, honeybadger.Context{"user_id": 2})
 ```
 
 Honeybadger uses the error's class name to group similar errors together. If
@@ -137,26 +137,26 @@ your error classes are often generic (such as `errors.errorString`), you can
 improve grouping by overriding the default with something more unique:
 
 ```go
-honeybadger.Notify(err, honeybadger.ErrorClass{"CustomClassName"})
+honeybadger.Notify(ctx, err, honeybadger.ErrorClass{"CustomClassName"})
 ```
 
 To override grouping entirely, you can send a custom fingerprint. All errors
 with the same fingerprint will be grouped together:
 
 ```go
-honeybadger.Notify(err, honeybadger.Fingerprint{"A unique string"})
+honeybadger.Notify(ctx, err, honeybadger.Fingerprint{"A unique string"})
 ```
 
 To tag errors in Honeybadger:
 
 ```go
-honeybadger.Notify(err, honeybadger.Tags{"timeout", "http"})
+honeybadger.Notify(ctx, err, honeybadger.Tags{"timeout", "http"})
 ```
 
 ---
 
 
-### `honeybadger.SetContext()`: Set metadata to be sent if an error occurs
+### `honeybadger.SetContext(context.Context, map[string]interface{})`: Set metadata to be sent if an error occurs
 
 This method lets you set context data that will be sent if an error should occur.
 
@@ -167,7 +167,7 @@ For example, it's often useful to record the current user's ID when an error occ
 #### Examples:
 
 ```go
-honeybadger.SetContext(honeybadger.Context{
+honeybadger.SetContext(ctx, honeybadger.Context{
   "user_id": 1,
 })
 ```
