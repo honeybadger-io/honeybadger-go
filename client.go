@@ -117,13 +117,27 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 		h = http.DefaultServeMux
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = SetContext(ctx, map[string]interface{}{
+			"path":           r.URL.String(),
+			"host":           r.Host,
+			"header":         r.Header,
+			"user-agent":     r.UserAgent(),
+			"content-length": r.ContentLength,
+			"method":         r.Method,
+			"proto":          r.Proto,
+			"remote-address": r.RemoteAddr,
+			"request-uri":    r.RequestURI,
+		})
+		req := r.WithContext(ctx)
+
 		defer func() {
 			if err := recover(); err != nil {
-				client.Notify(r.Context(), newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
+				client.Notify(req.Context(), newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
 				panic(err)
 			}
 		}()
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(w, req)
 	}
 	return http.HandlerFunc(fn)
 }
