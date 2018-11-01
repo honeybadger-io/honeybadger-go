@@ -118,7 +118,7 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	}
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		ctx = SetContext(ctx, map[string]interface{}{
+		ctx = client.SetContext(ctx, map[string]interface{}{
 			"path":           r.URL.String(),
 			"host":           r.Host,
 			"header":         r.Header,
