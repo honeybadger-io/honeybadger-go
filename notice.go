@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/pborman/uuid"
+	"github.com/gofrs/uuid/v3"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
 )
@@ -143,10 +143,12 @@ func composeStack(stack []*Frame, root string) (frames []*Frame) {
 }
 
 func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
+	tkn, _ := uuid.NewV4()
+
 	notice := Notice{
 		APIKey:       config.APIKey,
 		Error:        err,
-		Token:        uuid.NewRandom().String(),
+		Token:        tkn.String(),
 		ErrorMessage: err.Message,
 		ErrorClass:   err.Class,
 		Env:          config.Env,
