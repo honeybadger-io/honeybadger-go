@@ -11,7 +11,7 @@ prepare:
 	@echo Now you should be ready to run "make"
 
 test:
-	@go test -parallel 4 ./...
+	@go test -parallel 4 -race ./...
 
 # goimports produces slightly different formatted code from go fmt
 fmt:
