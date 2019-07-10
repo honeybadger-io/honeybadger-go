@@ -1,5 +1,5 @@
 language: go
-install: make deps
+install: go get -t ./...
 go:
   - 1.9.x
   - 1.10.x
@@ -7,3 +7,7 @@ go:
   - 1.12.x
   - stable
   - tip
+
+env:
+  global:
+    - GO111MODULE=on
