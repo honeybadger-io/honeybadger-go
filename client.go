@@ -88,14 +88,20 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	if h == nil {
 		h = http.DefaultServeMux
 	}
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, req *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
+				client.Notify(newError(err, 2), Params(req.Form), getCGIData(req), *req.URL)
 				panic(err)
 			}
 		}()
-		h.ServeHTTP(w, r)
+
+		// Add a fresh Context to the request if one is not already set
+		if hbCtx := FromContext(req.Context()); hbCtx == nil {
+			req = req.WithContext(Context{}.WithContext(req.Context()))
+		}
+
+		h.ServeHTTP(w, req)
 	}
 	return http.HandlerFunc(fn)
 }

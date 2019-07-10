@@ -156,6 +156,26 @@ honeybadger.Notify(err, honeybadger.Tags{"timeout", "http"})
 
 ---
 
+When using Go's context.Context you can store a honeybadger.Context to build it
+up across multiple middleware. Be aware that honeybadger.Context is not thread
+safe.
+```go
+func(resp http.ResponseWriter, req *http.Request) {
+  // To store a honeybadger.Context (or use honeybadger.Handler which does this for you)
+  hbCtx := honeybadger.Context{}
+  req = req.WithContext(hbCtx.WithContext(req.Context()))
+
+  // To add to an existing context
+  hbCtx = honeybadger.FromContext(req.Context())
+  hbCtx["user_id"] = "ID"
+
+  // To add the context when sending you can just pass the context.Context
+  honeybadger.Notify(err, ctx)
+}
+```
+
+---
+
 ### ``defer honeybadger.Monitor()``: Automatically report panics from your functions
 
 To automatically report panics in your functions or methods, add

@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -56,6 +57,18 @@ func TestNewNotice(t *testing.T) {
 	notice = newNotice(&Configuration{}, err, Context{"foo": "bar"})
 	if notice.Context["foo"] != "bar" {
 		t.Errorf("Expected notice to contain context. expected=%#v result=%#v", "bar", notice.Context["foo"])
+	}
+
+	// Notices can take the Context that is stored in a context.Context
+	notice = newNotice(&Configuration{}, err, Context{"foo": "bar"}.WithContext(context.Background()))
+	if notice.Context["foo"] != "bar" {
+		t.Errorf("Expected notice to contain context. expected=%#v result=%#v", "bar", notice.Context["foo"])
+	}
+
+	// Notices given a context.Context without a Context don't set notice.Context
+	notice = newNotice(&Configuration{}, err, context.Background())
+	if len(notice.Context) != 0 {
+		t.Errorf("Expected notice to contain empty context. result=%#v", notice.Context)
 	}
 }
 

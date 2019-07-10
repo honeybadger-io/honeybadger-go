@@ -1,6 +1,8 @@
 package honeybadger
 
 import (
+	"context"
+	"fmt"
 	"testing"
 )
 
@@ -83,4 +85,38 @@ func mockClient(c Configuration) (Client, *mockWorker, *mockBackend) {
 	}
 
 	return client, worker, backend
+}
+
+func TestClientContext(t *testing.T) {
+	backend := NewMemoryBackend()
+
+	client := New(Configuration{
+		APIKey:  "badgers",
+		Backend: backend,
+	})
+
+	err := NewError(fmt.Errorf("which context is which"))
+
+	hbCtx := Context{"user_id": 1}
+	goCtx := Context{"request_id": "1234"}.WithContext(context.Background())
+
+	_, nErr := client.Notify(err, hbCtx, goCtx)
+	if nErr != nil {
+		t.Fatal(nErr)
+	}
+
+	// Flush otherwise backend.Notices will be empty
+	client.Flush()
+
+	if len(backend.Notices) != 1 {
+		t.Fatalf("Notices expected=%d actual=%d", 1, len(backend.Notices))
+	}
+
+	notice := backend.Notices[0]
+	if notice.Context["user_id"] != 1 {
+		t.Errorf("notice.Context[user_id] expected=%d actual=%v", 1, notice.Context["user_id"])
+	}
+	if notice.Context["request_id"] != "1234" {
+		t.Errorf("notice.Context[request_id] expected=%q actual=%v", "1234", notice.Context["request_id"])
+	}
 }
