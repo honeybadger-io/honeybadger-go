@@ -11,10 +11,10 @@ var _ Backend = &nullBackend{}
 // them to Honeybadger. This is useful for development and testing to disable
 // sending unnecessary errors.
 func NewNullBackend() Backend {
-	return nullBackend{}
+	return &nullBackend{}
 }
 
 // Notify swallows error reports, does nothing, and returns no error.
-func (b nullBackend) Notify(_ Feature, _ Payload) error {
+func (*nullBackend) Notify(_ Feature, _ Payload) error {
 	return nil
 }

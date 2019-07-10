@@ -52,22 +52,26 @@ func newError(thing interface{}, stackOffset int) Error {
 	}
 }
 
-func generateStack(offset int) (frames []*Frame) {
+func generateStack(offset int) []*Frame {
 	stack := make([]uintptr, maxFrames)
 	length := runtime.Callers(2+offset, stack[:])
-	for _, pc := range stack[:length] {
-		f := runtime.FuncForPC(pc)
-		if f == nil {
-			continue
+
+	frames := runtime.CallersFrames(stack[:length])
+	result := make([]*Frame, 0, length)
+
+	for {
+		frame, more := frames.Next()
+
+		result = append(result, &Frame{
+			File:   frame.File,
+			Number: strconv.Itoa(frame.Line),
+			Method: frame.Function,
+		})
+
+		if !more {
+			break
 		}
-		file, line := f.FileLine(pc)
-		frame := &Frame{
-			File:   file,
-			Number: strconv.Itoa(line),
-			Method: f.Name(),
-		}
-		frames = append(frames, frame)
 	}
 
-	return
+	return result
 }
