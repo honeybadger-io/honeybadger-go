@@ -23,7 +23,6 @@ type noticeHandler func(*Notice) error
 // the configuration and implements the public API.
 type Client struct {
 	Config               *Configuration
-	context              *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
 }
@@ -31,11 +30,6 @@ type Client struct {
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
 	client.Config.update(&config)
-}
-
-// SetContext updates the client context with supplied context.
-func (client *Client) SetContext(context Context) {
-	client.context.Update(context)
 }
 
 // Flush blocks until the worker has processed its queue.
@@ -52,7 +46,6 @@ func (client *Client) BeforeNotify(handler func(notice *Notice) error) {
 
 // Notify reports the error err to the Honeybadger service.
 func (client *Client) Notify(err interface{}, extra ...interface{}) (string, error) {
-	extra = append([]interface{}{client.context.internal}, extra...)
 	notice := newNotice(client.Config, newError(err, 2), extra...)
 	for _, handler := range client.beforeNotifyHandlers {
 		if err := handler(notice); err != nil {
@@ -113,9 +106,8 @@ func New(c Configuration) *Client {
 	worker := newBufferedWorker(config)
 
 	client := Client{
-		Config:  config,
-		worker:  worker,
-		context: newContextSync(),
+		Config: config,
+		worker: worker,
 	}
 
 	return &client

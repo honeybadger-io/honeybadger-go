@@ -5,6 +5,9 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+### Changed
+- Removed honeybadger.SetContext and client.SetContext (#35) -@gaffneyc
+
 ## [0.5.0] - 2019-10-17
 ### Added
 - Added Sync mode
