@@ -290,10 +290,10 @@ variable or updating the config:
 honeybadger.Configure(honeybadger.Configuration{Sync: true})
 ```
 
-Since this is a global setting, this is most useful for situations when you are
-not sending the notice directly. If you *are* sending them directly and you want
-the same functionality, you can call `honeybadger.Flush` after sending the
-Notice to block until the worker has completed processing.
+"Sync" mode is most useful for situations when you are not sending the notice
+directly. If you *are* sending them directly and you want the same
+functionality, you can call `honeybadger.Flush` after sending the Notice to
+block until the worker has completed processing.
 
 ```go
 honeybadger.Notify("I errored.")
