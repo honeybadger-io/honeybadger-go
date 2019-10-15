@@ -280,7 +280,8 @@ specific class name that may be inferred from the message.
 By default, we send out all notices via a separate worker goroutine. This is
 awesome for long running applications as it keeps Honeybadger from from blocking
 during execution. However, this can be a problem for short running applications
-(lambdas, for example). To combat this, you can configure Honeybadger to work in
+(lambdas, for example) as the program might terminate before all messages are
+processed. To combat this, you can configure Honeybadger to work in
 "Sync" mode which blocks until notices are sent when `honeybadger.Notify` is
 executed. You can enable sync mode by setting the `HONEYBADGER_SYNC` environment
 variable or updating the config:
