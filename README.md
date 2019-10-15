@@ -106,6 +106,7 @@ The following options are available to you:
 | Env | `string` | `""` | `"production"` | `HONEYBADGER_ENV` |
 | Hostname | `string` | The hostname of the current server. | `"badger01"` | `HONEYBADGER_HOSTNAME` |
 | Endpoint | `string` | `"https://api.honeybadger.io"` | `"https://honeybadger.example.com/"` | `HONEYBADGER_ENDPOINT` |
+| Sync | `bool` | false | `true` | `HONEYBADGER_SYNC` |
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
