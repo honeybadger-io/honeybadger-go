@@ -53,7 +53,7 @@ func TestNewNotice(t *testing.T) {
 		t.Errorf("Expected notice not to trash project root. expected=%#v result=%#v", "/path/to/root/badgers.go", notice.Backtrace[0].File)
 	}
 
-	notice = newNotice(&Configuration{}, err, Context{"foo":"bar"})
+	notice = newNotice(&Configuration{}, err, Context{"foo": "bar"})
 	if notice.Context["foo"] != "bar" {
 		t.Errorf("Expected notice to contain context. expected=%#v result=%#v", "bar", notice.Context["foo"])
 	}

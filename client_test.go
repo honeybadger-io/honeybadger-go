@@ -1,8 +1,8 @@
 package honeybadger
 
 import (
-	"testing"
 	"sync"
+	"testing"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -49,8 +49,8 @@ func TestClientContext(t *testing.T) {
 func TestClientConcurrentContext(t *testing.T) {
 	var wg sync.WaitGroup
 
-	client     := New(Configuration{})
-	newContext := Context{"foo":"bar"}
+	client := New(Configuration{})
+	newContext := Context{"foo": "bar"}
 
 	wg.Add(2)
 

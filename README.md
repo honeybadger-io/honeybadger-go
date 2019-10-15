@@ -76,7 +76,7 @@ if err != nil {
 
 ## Sample Application
 
-If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go). 
+If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go).
 
 You can deploy the sample app to your Heroku account by clicking this button:
 
@@ -93,7 +93,7 @@ To set configuration options, use the `honeybadger.Configuration` method, like s
 
 ```go
 honeybadger.Configure(honeybadger.Configuration{
-  APIKey: "your api key", 
+  APIKey: "your api key",
   Env: "staging"
 })
 ```
@@ -115,7 +115,7 @@ The following options are available to you:
 
 ### `honeybadger.Notify()`: Send an error to Honeybadger.
 
-If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you. 
+If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you.
 
 #### Examples:
 
@@ -178,7 +178,7 @@ honeybadger.SetContext(honeybadger.Context{
 
 To automatically report panics in your functions or methods, add
 `defer honeybadger.Monitor()` to the beginning of the function or method you wish to monitor.
- 
+
 
 #### Examples:
 
