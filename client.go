@@ -59,16 +59,23 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 			return "", err
 		}
 	}
-	workerErr := client.worker.Push(func() error {
-		if err := client.Config.Backend.Notify(Notices, notice); err != nil {
-			return err
-		}
-		return nil
-	})
-	if workerErr != nil {
-		client.Config.Logger.Printf("worker error: %v\n", workerErr)
-		return "", workerErr
+
+	notifyFn := func() error {
+		return client.Config.Backend.Notify(Notices, notice)
 	}
+
+	if client.Config.Sync {
+		if notifyErr := notifyFn(); notifyErr != nil {
+			client.Config.Logger.Printf("notify error: %v\n", notifyErr)
+			return "", notifyErr
+		}
+	} else {
+		if workerPushErr := client.worker.Push(notifyFn); workerPushErr != nil {
+			client.Config.Logger.Printf("worker error: %v\n", workerPushErr)
+			return "", workerPushErr
+		}
+	}
+
 	return notice.Token, nil
 }
 

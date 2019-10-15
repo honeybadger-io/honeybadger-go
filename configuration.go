@@ -106,3 +106,10 @@ func getPWD() (pwd string) {
 	}
 	return getEnv("HONEYBADGER_ROOT", pwd)
 }
+
+func getSync() bool {
+	if getEnv("HONEYBADGER_SYNC") != "" {
+		return true
+	}
+	return false
+}
