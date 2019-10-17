@@ -350,6 +350,12 @@ If you're adding a new feature, please [submit an issue](https://github.com/hone
 3. Push to your branch `git push origin my_branch`
 4. Send a [pull request](https://github.com/honeybadger-io/honeybadger-go/pulls)
 
+## Releasing
+
+1. Update `VERSION` in `honeybadger.go`
+2. Include version in `CHANGELOG.md`
+3. Commit release and push tag with release version
+
 ### License
 
 This library is MIT licensed. See the [LICENSE](https://raw.github.com/honeybadger-io/honeybadger-go/master/LICENSE) file in this repository for details.
