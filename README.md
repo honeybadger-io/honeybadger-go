@@ -279,7 +279,7 @@ specific class name that may be inferred from the message.
 ## Sync Mode
 
 By default, we send out all notices via a separate worker goroutine. This is
-awesome for long running applications as it keeps Honeybadger from from blocking
+awesome for long running applications as it keeps Honeybadger from blocking
 during execution. However, this can be a problem for short running applications
 (lambdas, for example) as the program might terminate before all messages are
 processed. To combat this, you can configure Honeybadger to work in
