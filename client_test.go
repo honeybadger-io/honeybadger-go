@@ -1,8 +1,8 @@
 package honeybadger
 
 import (
-	"testing"
 	"sync"
+	"testing"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -49,8 +49,8 @@ func TestClientContext(t *testing.T) {
 func TestClientConcurrentContext(t *testing.T) {
 	var wg sync.WaitGroup
 
-	client     := New(Configuration{})
-	newContext := Context{"foo":"bar"}
+	client := New(Configuration{})
+	newContext := Context{"foo": "bar"}
 
 	wg.Add(2)
 
@@ -69,4 +69,62 @@ func TestClientConcurrentContext(t *testing.T) {
 func updateContext(wg *sync.WaitGroup, client *Client, context Context) {
 	client.SetContext(context)
 	wg.Done()
+}
+
+func TestNotifyPushesTheEnvelope(t *testing.T) {
+	client, worker, _ := mockClient(Configuration{})
+
+	client.Notify("test")
+
+	if worker.receivedEnvelope == false {
+		t.Errorf("Expected client to push envelope")
+	}
+}
+
+func TestNotifySyncMode(t *testing.T) {
+	client, worker, backend := mockClient(Configuration{Sync: true})
+
+	token, _ := client.Notify("test")
+
+	if worker.receivedEnvelope == true {
+		t.Errorf("Expected client to not push envelope")
+	}
+	if backend.notice.Token != token {
+		t.Errorf("Notice should have been called on backend")
+	}
+}
+
+type mockWorker struct {
+	receivedEnvelope bool
+}
+
+func (w *mockWorker) Push(work envelope) error {
+	w.receivedEnvelope = true
+	return nil
+}
+
+func (w *mockWorker) Flush() {}
+
+type mockBackend struct {
+	notice *Notice
+}
+
+func (b *mockBackend) Notify(_ Feature, n Payload) error {
+	b.notice = n.(*Notice)
+	return nil
+}
+
+func mockClient(c Configuration) (Client, *mockWorker, *mockBackend) {
+	worker := &mockWorker{}
+	backend := &mockBackend{}
+	backendConfig := &Configuration{Backend: backend}
+	backendConfig.update(&c)
+
+	client := Client{
+		Config:  newConfig(*backendConfig),
+		worker:  worker,
+		context: newContextSync(),
+	}
+
+	return client, worker, backend
 }

@@ -76,7 +76,7 @@ if err != nil {
 
 ## Sample Application
 
-If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go). 
+If you'd like to see the library in action before you integrate it with your apps, check out our [sample application](https://github.com/honeybadger-io/crywolf-go).
 
 You can deploy the sample app to your Heroku account by clicking this button:
 
@@ -93,7 +93,7 @@ To set configuration options, use the `honeybadger.Configuration` method, like s
 
 ```go
 honeybadger.Configure(honeybadger.Configuration{
-  APIKey: "your api key", 
+  APIKey: "your api key",
   Env: "staging"
 })
 ```
@@ -106,6 +106,7 @@ The following options are available to you:
 | Env | `string` | `""` | `"production"` | `HONEYBADGER_ENV` |
 | Hostname | `string` | The hostname of the current server. | `"badger01"` | `HONEYBADGER_HOSTNAME` |
 | Endpoint | `string` | `"https://api.honeybadger.io"` | `"https://honeybadger.example.com/"` | `HONEYBADGER_ENDPOINT` |
+| Sync | `bool` | false | `true` | `HONEYBADGER_SYNC` |
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
@@ -115,7 +116,7 @@ The following options are available to you:
 
 ### `honeybadger.Notify()`: Send an error to Honeybadger.
 
-If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you. 
+If you've handled a panic in your code, but would still like to report the error to Honeybadger, this is the method for you.
 
 #### Examples:
 
@@ -178,7 +179,7 @@ honeybadger.SetContext(honeybadger.Context{
 
 To automatically report panics in your functions or methods, add
 `defer honeybadger.Monitor()` to the beginning of the function or method you wish to monitor.
- 
+
 
 #### Examples:
 
@@ -274,6 +275,31 @@ fingerprint string.
 
 An alternate approach would be to override `notice.ErrorClass` with a more
 specific class name that may be inferred from the message.
+
+## Sync Mode
+
+By default, we send out all notices via a separate worker goroutine. This is
+awesome for long running applications as it keeps Honeybadger from blocking
+during execution. However, this can be a problem for short running applications
+(lambdas, for example) as the program might terminate before all messages are
+processed. To combat this, you can configure Honeybadger to work in
+"Sync" mode which blocks until notices are sent when `honeybadger.Notify` is
+executed. You can enable sync mode by setting the `HONEYBADGER_SYNC` environment
+variable or updating the config:
+
+```go
+honeybadger.Configure(honeybadger.Configuration{Sync: true})
+```
+
+"Sync" mode is most useful for situations when you are not sending the notice
+directly. If you *are* sending them directly and you want the same
+functionality, you can call `honeybadger.Flush` after sending the Notice to
+block until the worker has completed processing.
+
+```go
+honeybadger.Notify("I errored.")
+honeybadger.Flush()
+```
 
 ## Versioning
 
