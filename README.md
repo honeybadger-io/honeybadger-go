@@ -28,7 +28,7 @@ import "github.com/honeybadger-io/honeybadger-go"
 Finally, configure your API key:
 
 ```go
-honeybadger.Configure(honeybadger.Configuration{APIKey: "your api key"})
+honeybadger.Configure(honeybadger.Configuration{APIKey: "{{PROJECT_API_KEY}}"})
 ```
 
 You can also configure Honeybadger via environment variables. See
@@ -93,7 +93,7 @@ To set configuration options, use the `honeybadger.Configuration` method, like s
 
 ```go
 honeybadger.Configure(honeybadger.Configuration{
-  APIKey: "your api key",
+  APIKey: "{{PROJECT_API_KEY}}",
   Env: "staging"
 })
 ```
