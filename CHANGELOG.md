@@ -5,6 +5,14 @@ CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
+### Added
+- Added `honeybadger.FromContext` to retrieve a honeybadger.Context from a
+  context.Context.
+- Added `Context.WithContext` for storing a honeybadger.Context into a
+  context.Context.
+
+### Changed
+- Removed honeybadger.SetContext and client.SetContext (#35) -@gaffneyc
 
 ## [0.6.0] - 2024-01-19
 

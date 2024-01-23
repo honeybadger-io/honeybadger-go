@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"os"
@@ -174,6 +175,11 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 			notice.CGIData = t
 		case url.URL:
 			notice.URL = t.String()
+		case context.Context:
+			context := FromContext(t)
+			if context != nil {
+				notice.setContext(context)
+			}
 		}
 	}
 

@@ -1,7 +1,8 @@
 package honeybadger
 
 import (
-	"sync"
+	"context"
+	"fmt"
 	"testing"
 )
 
@@ -27,48 +28,6 @@ func TestConfigureClientEndpoint(t *testing.T) {
 	if *backend.URL != "http://localhost:3000" {
 		t.Errorf("Expected Configure to update backend. expected=%#v actual=%#v", "http://localhost:3000", backend.URL)
 	}
-}
-
-func TestClientContext(t *testing.T) {
-	client := New(Configuration{})
-
-	client.SetContext(Context{"foo": "bar"})
-	client.SetContext(Context{"bar": "baz"})
-
-	context := client.context.internal
-
-	if context["foo"] != "bar" {
-		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "bar", context["foo"])
-	}
-
-	if context["bar"] != "baz" {
-		t.Errorf("Expected client to merge global context. expected=%#v actual=%#v", "baz", context["bar"])
-	}
-}
-
-func TestClientConcurrentContext(t *testing.T) {
-	var wg sync.WaitGroup
-
-	client := New(Configuration{})
-	newContext := Context{"foo": "bar"}
-
-	wg.Add(2)
-
-	go updateContext(&wg, client, newContext)
-	go updateContext(&wg, client, newContext)
-
-	wg.Wait()
-
-	context := client.context.internal
-
-	if context["foo"] != "bar" {
-		t.Errorf("Expected context value. expected=%#v result=%#v", "bar", context["foo"])
-	}
-}
-
-func updateContext(wg *sync.WaitGroup, client *Client, context Context) {
-	client.SetContext(context)
-	wg.Done()
 }
 
 func TestNotifyPushesTheEnvelope(t *testing.T) {
@@ -121,10 +80,43 @@ func mockClient(c Configuration) (Client, *mockWorker, *mockBackend) {
 	backendConfig.update(&c)
 
 	client := Client{
-		Config:  newConfig(*backendConfig),
-		worker:  worker,
-		context: newContextSync(),
+		Config: newConfig(*backendConfig),
+		worker: worker,
 	}
 
 	return client, worker, backend
+}
+
+func TestClientContext(t *testing.T) {
+	backend := NewMemoryBackend()
+
+	client := New(Configuration{
+		APIKey:  "badgers",
+		Backend: backend,
+	})
+
+	err := NewError(fmt.Errorf("which context is which"))
+
+	hbCtx := Context{"user_id": 1}
+	goCtx := Context{"request_id": "1234"}.WithContext(context.Background())
+
+	_, nErr := client.Notify(err, hbCtx, goCtx)
+	if nErr != nil {
+		t.Fatal(nErr)
+	}
+
+	// Flush otherwise backend.Notices will be empty
+	client.Flush()
+
+	if len(backend.Notices) != 1 {
+		t.Fatalf("Notices expected=%d actual=%d", 1, len(backend.Notices))
+	}
+
+	notice := backend.Notices[0]
+	if notice.Context["user_id"] != 1 {
+		t.Errorf("notice.Context[user_id] expected=%d actual=%v", 1, notice.Context["user_id"])
+	}
+	if notice.Context["request_id"] != "1234" {
+		t.Errorf("notice.Context[request_id] expected=%q actual=%v", "1234", notice.Context["request_id"])
+	}
 }

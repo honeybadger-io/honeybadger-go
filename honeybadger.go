@@ -54,11 +54,6 @@ func Configure(c Configuration) {
 	DefaultClient.Configure(c)
 }
 
-// SetContext merges c Context into the Context of the global client.
-func SetContext(c Context) {
-	DefaultClient.SetContext(c)
-}
-
 // Notify reports the error err to the Honeybadger service.
 //
 // The first argument err may be an error, a string, or any other type in which
