@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased][unreleased]
 
+## [0.6.1] - 2024-04-12
+
+### Fixed
+
+- Implement error chains Unwrap method
+
 ## [0.6.0] - 2024-01-19
 
 ### Changed
