@@ -2,7 +2,7 @@ name: Release package
 
 on:
   workflow_run:
-    workflows: [Run Tests]
+    workflows: [Test]
     types: [completed]
     branches: [master]
 
