@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -32,6 +33,10 @@ func (e Error) Error() string {
 	return e.Message
 }
 
+type stacked interface {
+	Callers() []uintptr
+}
+
 func NewError(msg interface{}) Error {
 	return newError(msg, 2)
 }
@@ -52,16 +57,25 @@ func newError(thing interface{}, stackOffset int) Error {
 		err:     err,
 		Message: err.Error(),
 		Class:   reflect.TypeOf(err).String(),
-		Stack:   generateStack(stackOffset),
+		Stack:   generateStack(autostack(err, stackOffset)),
 	}
 }
 
-func generateStack(offset int) []*Frame {
+func autostack(err error, offset int) []uintptr {
+	var s stacked
+
+	if errors.As(err, &s) {
+		return s.Callers()
+	}
+
 	stack := make([]uintptr, maxFrames)
 	length := runtime.Callers(2+offset, stack[:])
+	return stack[:length]
+}
 
-	frames := runtime.CallersFrames(stack[:length])
-	result := make([]*Frame, 0, length)
+func generateStack(stack []uintptr) []*Frame {
+	frames := runtime.CallersFrames(stack)
+	result := make([]*Frame, 0, len(stack))
 
 	for {
 		frame, more := frames.Next()
