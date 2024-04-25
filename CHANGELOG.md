@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. See [Keep a
 CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.7.0](https://github.com/honeybadger-io/honeybadger-go/compare/v0.6.1...v0.7.0) (2024-04-25)
+
+
+### Features
+
+* allow errors to provide their own stack traces ([b8d3e83](https://github.com/honeybadger-io/honeybadger-go/commit/b8d3e83e6a36f7dac1b72e3ff7d1bf9cde4382da))
+
 ## [Unreleased][unreleased]
 
 ## [0.6.1] - 2024-04-12
