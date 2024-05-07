@@ -23,7 +23,6 @@ type noticeHandler func(*Notice) error
 // the configuration and implements the public API.
 type Client struct {
 	Config               *Configuration
-	context              *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
 }
@@ -31,11 +30,6 @@ type Client struct {
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
 	client.Config.update(&config)
-}
-
-// SetContext updates the client context with supplied context.
-func (client *Client) SetContext(context Context) {
-	client.context.Update(context)
 }
 
 // Flush blocks until the worker has processed its queue.
@@ -52,7 +46,6 @@ func (client *Client) BeforeNotify(handler func(notice *Notice) error) {
 
 // Notify reports the error err to the Honeybadger service.
 func (client *Client) Notify(err interface{}, extra ...interface{}) (string, error) {
-	extra = append([]interface{}{client.context.internal}, extra...)
 	notice := newNotice(client.Config, newError(err, 2), extra...)
 	for _, handler := range client.beforeNotifyHandlers {
 		if err := handler(notice); err != nil {
@@ -95,14 +88,20 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	if h == nil {
 		h = http.DefaultServeMux
 	}
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, req *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
+				client.Notify(newError(err, 2), Params(req.Form), getCGIData(req), *req.URL)
 				panic(err)
 			}
 		}()
-		h.ServeHTTP(w, r)
+
+		// Add a fresh Context to the request if one is not already set
+		if hbCtx := FromContext(req.Context()); hbCtx == nil {
+			req = req.WithContext(Context{}.WithContext(req.Context()))
+		}
+
+		h.ServeHTTP(w, req)
 	}
 	return http.HandlerFunc(fn)
 }
@@ -113,9 +112,8 @@ func New(c Configuration) *Client {
 	worker := newBufferedWorker(config)
 
 	client := Client{
-		Config:  config,
-		worker:  worker,
-		context: newContextSync(),
+		Config: config,
+		worker: worker,
 	}
 
 	return &client

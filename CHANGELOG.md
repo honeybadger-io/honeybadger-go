@@ -12,6 +12,14 @@ adheres to [Semantic Versioning](http://semver.org/).
 * allow errors to provide their own stack traces ([b8d3e83](https://github.com/honeybadger-io/honeybadger-go/commit/b8d3e83e6a36f7dac1b72e3ff7d1bf9cde4382da))
 
 ## [Unreleased][unreleased]
+### Added
+- Added `honeybadger.FromContext` to retrieve a honeybadger.Context from a
+  context.Context.
+- Added `Context.WithContext` for storing a honeybadger.Context into a
+  context.Context.
+
+### Changed
+- Removed honeybadger.SetContext and client.SetContext (#35) -@gaffneyc
 
 ## [0.6.1] - 2024-04-12
 

@@ -156,21 +156,22 @@ honeybadger.Notify(err, honeybadger.Tags{"timeout", "http"})
 
 ---
 
-
-### `honeybadger.SetContext()`: Set metadata to be sent if an error occurs
-
-This method lets you set context data that will be sent if an error should occur.
-
-For example, it's often useful to record the current user's ID when an error occurs in a web app. To do that, just use `SetContext` to set the user id on each request. If an error occurs, the id will be reported with it.
-
-**Note**: This method is currently shared across goroutines, and therefore may not be optimal for use in highly concurrent use cases, such as HTTP requests. See [issue #35](https://github.com/honeybadger-io/honeybadger-go/issues/35).
-
-#### Examples:
-
+When using Go's context.Context you can store a honeybadger.Context to build it
+up across multiple middleware. Be aware that honeybadger.Context is not thread
+safe.
 ```go
-honeybadger.SetContext(honeybadger.Context{
-  "user_id": 1,
-})
+func(resp http.ResponseWriter, req *http.Request) {
+  // To store a honeybadger.Context (or use honeybadger.Handler which does this for you)
+  hbCtx := honeybadger.Context{}
+  req = req.WithContext(hbCtx.WithContext(req.Context()))
+
+  // To add to an existing context
+  hbCtx = honeybadger.FromContext(req.Context())
+  hbCtx["user_id"] = "ID"
+
+  // To add the context when sending you can just pass the context.Context
+  honeybadger.Notify(err, ctx)
+}
 ```
 
 ---
