@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -192,6 +193,72 @@ func TestNotifyWithFingerprint(t *testing.T) {
 	if sent_fingerprint != "Badgers" {
 		t.Errorf("Custom fingerprint should override default. expected=%v actual=%#v.", "Badgers", sent_fingerprint)
 		return
+	}
+}
+
+func TestNotifyWithRequest(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	reqUrl := "/reqPath?qKey=qValue"
+	var req *http.Request
+
+	// Make sure nil request doesn't panic
+	Notify("Cobras!", req)
+
+	// Test a request with query data without form
+	req = httptest.NewRequest("GET", reqUrl, nil)
+	Notify("Cobras!", req)
+	Flush()
+
+	// Test a request with form and query data
+	req = httptest.NewRequest("GET", reqUrl, nil)
+	req.Header.Set("Accept", "application/test-data")
+	req.Form = url.Values{"fKey": {"fValue"}}
+	Notify("Cobras!", req)
+	Flush()
+
+	if !testRequestCount(t, 3) {
+		return
+	}
+
+	// Request[0] - Valid error means we properly handled a nil value
+	if error := requests[0].decodeJSON()["error"]; error == nil {
+		t.Errorf("Request error should be populated.")
+	}
+
+	// Request[1] - Checks URL & query extraction
+	payload := requests[1].decodeJSON()
+	request_payload, _ := payload["request"].(map[string]interface{})
+
+	if url, _ := request_payload["url"].(string); url != reqUrl {
+		t.Errorf("Request URL should be extracted. expected=%v actual=%#v.", "/fail", url)
+		return
+	}
+
+	params, _ := request_payload["params"].(map[string]interface{})
+	values, _ := params["qKey"].([]interface{})
+	if len(params) != 1 || len(values) != 1 || values[0] != "qValue" {
+		t.Errorf("Request params should be extracted. expected=%v actual=%#v.", req.Form, params)
+	}
+
+	// Request[2] - Checks header & form extraction
+	payload = requests[2].decodeJSON()
+	request_payload, _ = payload["request"].(map[string]interface{})
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	cgi, _ := request_payload["cgi_data"].(map[string]interface{})
+	if len(cgi) != 1 || cgi["HTTP_ACCEPT"] != "application/test-data" {
+		t.Errorf("Request cgi_data should be extracted. expected=%v actual=%#v.", req.Header, cgi)
+	}
+
+	params, _ = request_payload["params"].(map[string]interface{})
+	values, _ = params["fKey"].([]interface{})
+	if len(params) != 1 || len(values) != 1 || values[0] != "fValue" {
+		t.Errorf("Request params should be extracted. expected=%v actual=%#v.", req.Form, params)
 	}
 }
 

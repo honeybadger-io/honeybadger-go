@@ -2,7 +2,6 @@ package honeybadger
 
 import (
 	"net/http"
-	"strings"
 )
 
 // The Payload interface is implemented by any type which can be handled by the
@@ -98,7 +97,7 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				client.Notify(newError(err, 2), Params(r.Form), getCGIData(r), *r.URL)
+				client.Notify(newError(err, 2), r)
 				panic(err)
 			}
 		}()
@@ -119,14 +118,4 @@ func New(c Configuration) *Client {
 	}
 
 	return &client
-}
-
-func getCGIData(request *http.Request) CGIData {
-	cgiData := CGIData{}
-	replacer := strings.NewReplacer("-", "_")
-	for k, v := range request.Header {
-		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
-		cgiData[key] = v[0]
-	}
-	return cgiData
 }
