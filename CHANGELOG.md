@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. See [Keep a
 CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.0](https://github.com/honeybadger-io/honeybadger-go/compare/v0.7.0...v0.8.0) (2024-09-16)
+
+
+### Features
+
+* allow Notify to receive *http.Request ([#54](https://github.com/honeybadger-io/honeybadger-go/issues/54)) ([b0d2af0](https://github.com/honeybadger-io/honeybadger-go/commit/b0d2af07a031075d86b497c882f2649f25ca1404))
+
 ## [0.7.0](https://github.com/honeybadger-io/honeybadger-go/compare/v0.6.1...v0.7.0) (2024-04-25)
 
 
