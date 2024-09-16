@@ -2,9 +2,11 @@ package honeybadger
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -174,8 +176,34 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 			notice.CGIData = t
 		case url.URL:
 			notice.URL = t.String()
+		case *http.Request:
+			setHttpRequest(&notice, t)
 		}
 	}
 
 	return &notice
+}
+
+func setHttpRequest(notice *Notice, r *http.Request) {
+	if r == nil {
+		return
+	}
+
+	notice.URL = r.URL.String()
+	notice.CGIData = CGIData{}
+
+	replacer := strings.NewReplacer("-", "_")
+	for k, v := range r.Header {
+		key := "HTTP_" + replacer.Replace(strings.ToUpper(k))
+		notice.CGIData[key] = v[0]
+	}
+
+	// Form is only populated if ParseForm() is called on the request and it
+	// will include URL query parameters. So if it's empty, then it's possible
+	// that ParseForm wasn't called, and we will miss reporting URL params.
+	if form := r.Form; len(form) == 0 {
+		notice.Params = Params(r.URL.Query())
+	} else {
+		notice.Params = Params(form)
+	}
 }
