@@ -78,6 +78,11 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 	return notice.Token, nil
 }
 
+func (client *Client) Event(eventData map[string]interface{}) error {
+	event := newEventPayload(eventData)
+	return client.Config.Backend.Notify(Events, event)
+}
+
 // Monitor automatically reports panics which occur in the function it's called
 // from. Must be deferred.
 func (client *Client) Monitor() {

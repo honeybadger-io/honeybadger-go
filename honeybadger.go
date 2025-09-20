@@ -18,6 +18,9 @@ var (
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
+
+	// Events is the feature for sending events to Insights.
+	Events = Feature{"events"}
 )
 
 // Feature references a resource provided by the API service. Its Endpoint maps
@@ -68,6 +71,10 @@ func SetContext(c Context) {
 // Honeybadger service, and an error as a second argument.
 func Notify(err interface{}, extra ...interface{}) (string, error) {
 	return DefaultClient.Notify(newError(err, 2), extra...)
+}
+
+func Event(eventData map[string]interface{}) error {
+	return DefaultClient.Event(eventData)
 }
 
 // Monitor is used to automatically notify Honeybadger service of panics which

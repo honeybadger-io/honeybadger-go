@@ -19,6 +19,7 @@ var (
 	mux           *http.ServeMux
 	ts            *httptest.Server
 	requests      []*HTTPRequest
+	eventRequests []*HTTPRequest
 	defaultConfig = *Config
 )
 
@@ -59,6 +60,22 @@ func setup(t *testing.T) {
 			requests = append(requests, newHTTPRequest(r))
 			w.WriteHeader(201)
 			fmt.Fprint(w, `{"id":"87ded4b4-63cc-480a-b50c-8abe1376d972"}`)
+		},
+	)
+
+	*DefaultClient.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+}
+
+func setupEvents(t *testing.T) {
+	mux = http.NewServeMux()
+	ts = httptest.NewServer(mux)
+	eventRequests = []*HTTPRequest{}
+	mux.HandleFunc("/v1/events",
+		func(w http.ResponseWriter, r *http.Request) {
+			assertMethod(t, r, "POST")
+			eventRequests = append(eventRequests, newHTTPRequest(r))
+			w.WriteHeader(201)
+			fmt.Fprint(w, `{"id":"event-id"}`)
 		},
 	)
 
@@ -373,6 +390,35 @@ func testNoticePayload(t *testing.T, payload hash) bool {
 		}
 	}
 	return true
+}
+
+func TestEvent(t *testing.T) {
+	setupEvents(t)
+	defer teardown()
+
+	eventData := map[string]interface{}{
+		"event_type": "test_event",
+		"message":    "test message",
+	}
+
+	err := Event(eventData)
+	if err != nil {
+		t.Errorf("Expected Event() to return no error. actual=%#v", err)
+	}
+
+	Flush()
+
+	if len(eventRequests) != 1 {
+		t.Fatalf("Expected 1 event request. actual=%d", len(eventRequests))
+	}
+
+	payload := eventRequests[0].decodeJSON()
+	if eventType, ok := payload["event_type"].(string); !ok || eventType != "test_event" {
+		t.Errorf("Expected event_type 'test_event'. actual=%#v", payload["event_type"])
+	}
+	if _, ok := payload["ts"].(string); !ok {
+		t.Errorf("Expected ts field to be present. actual=%#v", payload)
+	}
 }
 
 func TestHandlerCallsHandler(t *testing.T) {
