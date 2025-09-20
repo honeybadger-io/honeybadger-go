@@ -13,12 +13,13 @@ func (e *eventPayload) toJSON() []byte {
 	return h.toJSON()
 }
 
-func newEventPayload(eventData map[string]interface{}) *eventPayload {
+func newEventPayload(eventType string, eventData map[string]interface{}) *eventPayload {
 	data := make(map[string]interface{})
 	for k, v := range eventData {
 		data[k] = v
 	}
 	
+	data["event_type"] = eventType
 	data["ts"] = time.Now().UTC().Format(time.RFC3339)
 	
 	return &eventPayload{data: data}

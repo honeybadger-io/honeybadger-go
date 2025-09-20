@@ -397,11 +397,11 @@ func TestEvent(t *testing.T) {
 	defer teardown()
 
 	eventData := map[string]interface{}{
-		"event_type": "test_event",
-		"message":    "test message",
+		"message": "test message",
+		"user_id": 123,
 	}
 
-	err := Event(eventData)
+	err := Event("test_event", eventData)
 	if err != nil {
 		t.Errorf("Expected Event() to return no error. actual=%#v", err)
 	}
@@ -415,6 +415,9 @@ func TestEvent(t *testing.T) {
 	payload := eventRequests[0].decodeJSON()
 	if eventType, ok := payload["event_type"].(string); !ok || eventType != "test_event" {
 		t.Errorf("Expected event_type 'test_event'. actual=%#v", payload["event_type"])
+	}
+	if message, ok := payload["message"].(string); !ok || message != "test message" {
+		t.Errorf("Expected message 'test message'. actual=%#v", payload["message"])
 	}
 	if _, ok := payload["ts"].(string); !ok {
 		t.Errorf("Expected ts field to be present. actual=%#v", payload)

@@ -73,8 +73,8 @@ func Notify(err interface{}, extra ...interface{}) (string, error) {
 	return DefaultClient.Notify(newError(err, 2), extra...)
 }
 
-func Event(eventData map[string]interface{}) error {
-	return DefaultClient.Event(eventData)
+func Event(eventType string, eventData map[string]interface{}) error {
+	return DefaultClient.Event(eventType, eventData)
 }
 
 // Monitor is used to automatically notify Honeybadger service of panics which

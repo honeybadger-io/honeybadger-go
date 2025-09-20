@@ -78,8 +78,8 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 	return notice.Token, nil
 }
 
-func (client *Client) Event(eventData map[string]interface{}) error {
-	event := newEventPayload(eventData)
+func (client *Client) Event(eventType string, eventData map[string]interface{}) error {
+	event := newEventPayload(eventType, eventData)
 	return client.Config.Backend.Notify(Events, event)
 }
 
