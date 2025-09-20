@@ -396,6 +396,8 @@ func TestEvent(t *testing.T) {
 	setupEvents(t)
 	defer teardown()
 
+	Configure(Configuration{EventsBatchSize: 1})
+
 	eventData := map[string]interface{}{
 		"message": "test message",
 		"user_id": 123,
@@ -406,21 +408,44 @@ func TestEvent(t *testing.T) {
 		t.Errorf("Expected Event() to return no error. actual=%#v", err)
 	}
 
-	Flush()
-
 	if len(eventRequests) != 1 {
 		t.Fatalf("Expected 1 event request. actual=%d", len(eventRequests))
 	}
 
 	payload := eventRequests[0].decodeJSON()
-	if eventType, ok := payload["event_type"].(string); !ok || eventType != "test_event" {
-		t.Errorf("Expected event_type 'test_event'. actual=%#v", payload["event_type"])
+	events, ok := payload["events"].([]interface{})
+	if !ok || len(events) != 1 {
+		t.Fatalf("Expected batch format with 1 event. actual=%#v", payload)
 	}
-	if message, ok := payload["message"].(string); !ok || message != "test message" {
-		t.Errorf("Expected message 'test message'. actual=%#v", payload["message"])
+
+	event := events[0].(map[string]interface{})
+	if eventType, ok := event["event_type"].(string); !ok || eventType != "test_event" {
+		t.Errorf("Expected event_type 'test_event'. actual=%#v", event["event_type"])
 	}
-	if _, ok := payload["ts"].(string); !ok {
-		t.Errorf("Expected ts field to be present. actual=%#v", payload)
+	if message, ok := event["message"].(string); !ok || message != "test message" {
+		t.Errorf("Expected message 'test message'. actual=%#v", event["message"])
+	}
+	if _, ok := event["ts"].(string); !ok {
+		t.Errorf("Expected ts field to be present. actual=%#v", event)
+	}
+}
+
+func TestEventBatching(t *testing.T) {
+	setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 2})
+
+	Event("event1", map[string]interface{}{"data": "first"})
+
+	if len(eventRequests) != 0 {
+		t.Errorf("Expected no requests before batch size reached. actual=%d", len(eventRequests))
+	}
+
+	Event("event2", map[string]interface{}{"data": "second"})
+
+	if len(eventRequests) != 1 {
+		t.Fatalf("Expected 1 batch request when batch size reached. actual=%d", len(eventRequests))
 	}
 }
 

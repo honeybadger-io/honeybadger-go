@@ -25,6 +25,7 @@ type Client struct {
 	context              *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
+	eventQueue           []*eventPayload
 }
 
 // Configure updates the client configuration with the supplied config.
@@ -40,6 +41,7 @@ func (client *Client) SetContext(context Context) {
 // Flush blocks until the worker has processed its queue.
 func (client *Client) Flush() {
 	client.worker.Flush()
+	client.flushEvents()
 }
 
 // BeforeNotify adds a callback function which is run before a notice is
@@ -80,7 +82,24 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 
 func (client *Client) Event(eventType string, eventData map[string]interface{}) error {
 	event := newEventPayload(eventType, eventData)
-	return client.Config.Backend.Notify(Events, event)
+	client.eventQueue = append(client.eventQueue, event)
+	
+	if len(client.eventQueue) >= client.Config.EventsBatchSize {
+		return client.flushEvents()
+	}
+	
+	return nil
+}
+
+func (client *Client) flushEvents() error {
+	if len(client.eventQueue) == 0 {
+		return nil
+	}
+	
+	batch := newEventBatch(client.eventQueue)
+	client.eventQueue = nil
+	
+	return client.Config.Backend.Notify(Events, batch)
 }
 
 // Monitor automatically reports panics which occur in the function it's called

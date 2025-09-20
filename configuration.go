@@ -15,15 +15,16 @@ type Logger interface {
 
 // Configuration manages the configuration for the client.
 type Configuration struct {
-	APIKey   string
-	Root     string
-	Env      string
-	Hostname string
-	Endpoint string
-	Sync     bool
-	Timeout  time.Duration
-	Logger   Logger
-	Backend  Backend
+	APIKey           string
+	Root             string
+	Env              string
+	Hostname         string
+	Endpoint         string
+	Sync             bool
+	Timeout          time.Duration
+	Logger           Logger
+	Backend          Backend
+	EventsBatchSize  int
 }
 
 func (c1 *Configuration) update(c2 *Configuration) *Configuration {
@@ -51,6 +52,9 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.Backend != nil {
 		c1.Backend = c2.Backend
 	}
+	if c2.EventsBatchSize > 0 {
+		c1.EventsBatchSize = c2.EventsBatchSize
+	}
 
 	c1.Sync = c2.Sync
 	return c1
@@ -58,14 +62,15 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 
 func newConfig(c Configuration) *Configuration {
 	config := &Configuration{
-		APIKey:   getEnv("HONEYBADGER_API_KEY"),
-		Root:     getPWD(),
-		Env:      getEnv("HONEYBADGER_ENV"),
-		Hostname: getHostname(),
-		Endpoint: getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
-		Timeout:  getTimeout(),
-		Logger:   log.New(os.Stderr, "[honeybadger] ", log.Flags()),
-		Sync:     getSync(),
+		APIKey:          getEnv("HONEYBADGER_API_KEY"),
+		Root:            getPWD(),
+		Env:             getEnv("HONEYBADGER_ENV"),
+		Hostname:        getHostname(),
+		Endpoint:        getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
+		Timeout:         getTimeout(),
+		Logger:          log.New(os.Stderr, "[honeybadger] ", log.Flags()),
+		Sync:            getSync(),
+		EventsBatchSize: 1000,
 	}
 	config.update(&c)
 
