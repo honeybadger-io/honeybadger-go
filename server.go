@@ -37,22 +37,34 @@ type server struct {
 }
 
 func (s *server) Notify(feature Feature, payload Payload) error {
-	// Copy the value from the pointer in case it has changed in the
-	// configuration.
+	return s.sendRequest("v1/"+feature.Endpoint, payload.toJSON(), "application/json")
+}
+
+func (s *server) Event(events []*eventPayload) error {
+	var jsonl []byte
+	for _, event := range events {
+		jsonl = append(jsonl, event.toJSON()...)
+		jsonl = append(jsonl, '\n')
+	}
+	return s.sendRequest("v1/events", jsonl, "application/x-ndjson")
+}
+
+func (s *server) sendRequest(path string, body []byte, contentType string) error {
 	s.Client.Timeout = *s.Timeout
 
 	url, err := url.Parse(*s.URL)
 	if err != nil {
 		return err
 	}
-	url.Path = "v1/" + feature.Endpoint
-	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(payload.toJSON()))
+	url.Path = path
+
+	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("X-API-Key", *s.APIKey)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := s.Client.Do(req)

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/pborman/uuid"
@@ -412,13 +413,16 @@ func TestEvent(t *testing.T) {
 		t.Fatalf("Expected 1 event request. actual=%d", len(eventRequests))
 	}
 
-	payload := eventRequests[0].decodeJSON()
-	events, ok := payload["events"].([]interface{})
-	if !ok || len(events) != 1 {
-		t.Fatalf("Expected batch format with 1 event. actual=%#v", payload)
+	body := string(eventRequests[0].Body)
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 JSONL event. actual=%d lines", len(lines))
 	}
 
-	event := events[0].(map[string]interface{})
+	var event map[string]interface{}
+	if err := json.Unmarshal([]byte(lines[0]), &event); err != nil {
+		t.Fatalf("Failed to parse JSONL event: %v", err)
+	}
 	if eventType, ok := event["event_type"].(string); !ok || eventType != "test_event" {
 		t.Errorf("Expected event_type 'test_event'. actual=%#v", event["event_type"])
 	}

@@ -114,6 +114,10 @@ func (b *mockBackend) Notify(_ Feature, n Payload) error {
 	return nil
 }
 
+func (b *mockBackend) Event(events []*eventPayload) error {
+	return nil
+}
+
 func mockClient(c Configuration) (Client, *mockWorker, *mockBackend) {
 	worker := &mockWorker{}
 	backend := &mockBackend{}

@@ -14,6 +14,7 @@ type Payload interface {
 // custom implementation may be configured by the user.
 type Backend interface {
 	Notify(feature Feature, payload Payload) error
+	Event(events []*eventPayload) error
 }
 
 type noticeHandler func(*Notice) error
@@ -96,10 +97,10 @@ func (client *Client) flushEvents() error {
 		return nil
 	}
 	
-	batch := newEventBatch(client.eventQueue)
+	events := client.eventQueue
 	client.eventQueue = nil
 	
-	return client.Config.Backend.Notify(Events, batch)
+	return client.Config.Backend.Event(events)
 }
 
 // Monitor automatically reports panics which occur in the function it's called

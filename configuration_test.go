@@ -12,6 +12,10 @@ func (l *TestBackend) Notify(f Feature, p Payload) (err error) {
 	return
 }
 
+func (l *TestBackend) Event(events []*eventPayload) (err error) {
+	return
+}
+
 func TestUpdateConfig(t *testing.T) {
 	config := &Configuration{}
 	logger := &TestLogger{}
