@@ -26,12 +26,19 @@ type Client struct {
 	context              *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
-	eventQueue           []*eventPayload
+	eventsWorker         *EventsWorker
 }
 
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
+	eventsConfigChanged := config.EventsBatchSize > 0 || config.EventsTimeout > 0 || config.Backend != nil
+	
 	client.Config.update(&config)
+	
+	if eventsConfigChanged && client.eventsWorker != nil {
+		client.eventsWorker.Stop()
+		client.eventsWorker = NewEventsWorker(client.Config)
+	}
 }
 
 // SetContext updates the client context with supplied context.
@@ -42,7 +49,7 @@ func (client *Client) SetContext(context Context) {
 // Flush blocks until the worker has processed its queue.
 func (client *Client) Flush() {
 	client.worker.Flush()
-	client.flushEvents()
+	client.eventsWorker.Flush()
 }
 
 // BeforeNotify adds a callback function which is run before a notice is
@@ -83,24 +90,8 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 
 func (client *Client) Event(eventType string, eventData map[string]interface{}) error {
 	event := newEventPayload(eventType, eventData)
-	client.eventQueue = append(client.eventQueue, event)
-	
-	if len(client.eventQueue) >= client.Config.EventsBatchSize {
-		return client.flushEvents()
-	}
-	
+	client.eventsWorker.Push(event)
 	return nil
-}
-
-func (client *Client) flushEvents() error {
-	if len(client.eventQueue) == 0 {
-		return nil
-	}
-	
-	events := client.eventQueue
-	client.eventQueue = nil
-	
-	return client.Config.Backend.Event(events)
 }
 
 // Monitor automatically reports panics which occur in the function it's called
@@ -135,11 +126,13 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
+	eventsWorker := NewEventsWorker(config)
 
 	client := Client{
-		Config:  config,
-		worker:  worker,
-		context: newContextSync(),
+		Config:       config,
+		worker:       worker,
+		context:      newContextSync(),
+		eventsWorker: eventsWorker,
 	}
 
 	return &client

@@ -10,18 +10,21 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
 var (
-	mux           *http.ServeMux
-	ts            *httptest.Server
-	requests      []*HTTPRequest
-	eventRequests []*HTTPRequest
-	defaultConfig = *Config
+	mux              *http.ServeMux
+	ts               *httptest.Server
+	requests         []*HTTPRequest
+	eventRequests    []*HTTPRequest
+	eventRequestsMux sync.Mutex
+	defaultConfig    = *Config
 )
 
 type MockedHandler struct {
@@ -70,20 +73,33 @@ func setup(t *testing.T) {
 func setupEvents(t *testing.T) {
 	mux = http.NewServeMux()
 	ts = httptest.NewServer(mux)
+	eventRequestsMux.Lock()
 	eventRequests = []*HTTPRequest{}
+	eventRequestsMux.Unlock()
 	mux.HandleFunc("/v1/events",
 		func(w http.ResponseWriter, r *http.Request) {
 			assertMethod(t, r, "POST")
+			eventRequestsMux.Lock()
 			eventRequests = append(eventRequests, newHTTPRequest(r))
+			eventRequestsMux.Unlock()
 			w.WriteHeader(201)
 			fmt.Fprint(w, `{"id":"event-id"}`)
 		},
 	)
 
-	*DefaultClient.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
+	
+	config := newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+	*DefaultClient.Config = *config
+	DefaultClient.eventsWorker = NewEventsWorker(config)
 }
 
 func teardown() {
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
 	*DefaultClient.Config = defaultConfig
 }
 
@@ -409,11 +425,19 @@ func TestEvent(t *testing.T) {
 		t.Errorf("Expected Event() to return no error. actual=%#v", err)
 	}
 
-	if len(eventRequests) != 1 {
-		t.Fatalf("Expected 1 event request. actual=%d", len(eventRequests))
-	}
+	time.Sleep(10 * time.Millisecond) // Give worker time to process
 
-	body := string(eventRequests[0].Body)
+	eventRequestsMux.Lock()
+	numRequests := len(eventRequests)
+	var body string
+	if numRequests > 0 {
+		body = string(eventRequests[0].Body)
+	}
+	eventRequestsMux.Unlock()
+
+	if numRequests != 1 {
+		t.Fatalf("Expected 1 event request. actual=%d", numRequests)
+	}
 	lines := strings.Split(strings.TrimSpace(body), "\n")
 	if len(lines) != 1 {
 		t.Fatalf("Expected 1 JSONL event. actual=%d lines", len(lines))
@@ -442,14 +466,48 @@ func TestEventBatching(t *testing.T) {
 
 	Event("event1", map[string]interface{}{"data": "first"})
 
-	if len(eventRequests) != 0 {
-		t.Errorf("Expected no requests before batch size reached. actual=%d", len(eventRequests))
+	time.Sleep(10 * time.Millisecond)
+	eventRequestsMux.Lock()
+	numRequests1 := len(eventRequests)
+	eventRequestsMux.Unlock()
+	if numRequests1 != 0 {
+		t.Errorf("Expected no requests before batch size reached. actual=%d", numRequests1)
 	}
 
 	Event("event2", map[string]interface{}{"data": "second"})
 
-	if len(eventRequests) != 1 {
-		t.Fatalf("Expected 1 batch request when batch size reached. actual=%d", len(eventRequests))
+	time.Sleep(10 * time.Millisecond)
+	eventRequestsMux.Lock()
+	numRequests2 := len(eventRequests)
+	eventRequestsMux.Unlock()
+	if numRequests2 != 1 {
+		t.Fatalf("Expected 1 batch request when batch size reached. actual=%d", numRequests2)
+	}
+}
+
+func TestEventTimeout(t *testing.T) {
+	setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 10, EventsTimeout: 50 * time.Millisecond})
+
+	Event("event1", map[string]interface{}{"data": "first"})
+
+	time.Sleep(25 * time.Millisecond) // Wait less than timeout
+	eventRequestsMux.Lock()
+	numRequests1 := len(eventRequests)
+	eventRequestsMux.Unlock()
+	if numRequests1 != 0 {
+		t.Errorf("Expected no immediate requests. actual=%d", numRequests1)
+	}
+
+	time.Sleep(50 * time.Millisecond) // Wait for timeout
+
+	eventRequestsMux.Lock()
+	numRequests2 := len(eventRequests)
+	eventRequestsMux.Unlock()
+	if numRequests2 != 1 {
+		t.Fatalf("Expected 1 request after timeout. actual=%d", numRequests2)
 	}
 }
 

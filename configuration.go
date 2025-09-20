@@ -25,6 +25,7 @@ type Configuration struct {
 	Logger           Logger
 	Backend          Backend
 	EventsBatchSize  int
+	EventsTimeout    time.Duration
 }
 
 func (c1 *Configuration) update(c2 *Configuration) *Configuration {
@@ -55,6 +56,9 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.EventsBatchSize > 0 {
 		c1.EventsBatchSize = c2.EventsBatchSize
 	}
+	if c2.EventsTimeout > 0 {
+		c1.EventsTimeout = c2.EventsTimeout
+	}
 
 	c1.Sync = c2.Sync
 	return c1
@@ -71,6 +75,7 @@ func newConfig(c Configuration) *Configuration {
 		Logger:          log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 		Sync:            getSync(),
 		EventsBatchSize: 1000,
+		EventsTimeout:   30 * time.Second,
 	}
 	config.update(&c)
 
