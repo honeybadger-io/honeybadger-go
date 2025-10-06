@@ -29,13 +29,15 @@ type Client struct {
 	eventsWorker         *EventsWorker
 }
 
+func eventsConfigChanged(config *Configuration) bool {
+	return config.EventsBatchSize > 0 || config.EventsTimeout > 0 || config.EventsMaxQueueSize > 0 || config.EventsMaxRetries >= 0 || config.Backend != nil || config.Context != nil
+}
+
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
-	eventsConfigChanged := config.EventsBatchSize > 0 || config.EventsTimeout > 0 || config.Backend != nil
-	
 	client.Config.update(&config)
-	
-	if eventsConfigChanged && client.eventsWorker != nil {
+
+	if eventsConfigChanged(&config) && client.eventsWorker != nil {
 		client.eventsWorker.Stop()
 		client.eventsWorker = NewEventsWorker(client.Config)
 	}

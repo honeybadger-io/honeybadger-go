@@ -1,16 +1,16 @@
 package honeybadger
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -18,13 +18,16 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+type eventReqResp struct {
+	Body     []byte
+	Response chan int
+}
+
 var (
-	mux              *http.ServeMux
-	ts               *httptest.Server
-	requests         []*HTTPRequest
-	eventRequests    []*HTTPRequest
-	eventRequestsMux sync.Mutex
-	defaultConfig    = *Config
+	mux           *http.ServeMux
+	ts            *httptest.Server
+	requests      []*HTTPRequest
+	defaultConfig = *Config
 )
 
 type MockedHandler struct {
@@ -50,7 +53,7 @@ func (h *HTTPRequest) decodeJSON() hash {
 }
 
 func newHTTPRequest(r *http.Request) *HTTPRequest {
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	return &HTTPRequest{r, body}
 }
 
@@ -70,30 +73,38 @@ func setup(t *testing.T) {
 	*DefaultClient.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
 }
 
-func setupEvents(t *testing.T) {
+func setupEvents(t *testing.T) chan eventReqResp {
 	mux = http.NewServeMux()
 	ts = httptest.NewServer(mux)
-	eventRequestsMux.Lock()
-	eventRequests = []*HTTPRequest{}
-	eventRequestsMux.Unlock()
-	mux.HandleFunc("/v1/events",
-		func(w http.ResponseWriter, r *http.Request) {
-			assertMethod(t, r, "POST")
-			eventRequestsMux.Lock()
-			eventRequests = append(eventRequests, newHTTPRequest(r))
-			eventRequestsMux.Unlock()
+	control := make(chan eventReqResp)
+
+	mux.HandleFunc("/v1/events", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, r, "POST")
+		body, _ := io.ReadAll(r.Body)
+		respCh := make(chan int)
+
+		select {
+		case control <- eventReqResp{Body: body, Response: respCh}:
+			status := <-respCh
+			w.WriteHeader(status)
+			if status == 201 {
+				fmt.Fprint(w, `{"id":"event-id"}`)
+			}
+		default:
 			w.WriteHeader(201)
 			fmt.Fprint(w, `{"id":"event-id"}`)
-		},
-	)
+		}
+	})
 
 	if DefaultClient.eventsWorker != nil {
 		DefaultClient.eventsWorker.Stop()
 	}
-	
+
 	config := newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
 	*DefaultClient.Config = *config
 	DefaultClient.eventsWorker = NewEventsWorker(config)
+
+	return control
 }
 
 func teardown() {
@@ -410,7 +421,7 @@ func testNoticePayload(t *testing.T, payload hash) bool {
 }
 
 func TestEvent(t *testing.T) {
-	setupEvents(t)
+	control := setupEvents(t)
 	defer teardown()
 
 	Configure(Configuration{EventsBatchSize: 1})
@@ -425,20 +436,10 @@ func TestEvent(t *testing.T) {
 		t.Errorf("Expected Event() to return no error. actual=%#v", err)
 	}
 
-	time.Sleep(10 * time.Millisecond) // Give worker time to process
+	req := <-control
+	req.Response <- 201
 
-	eventRequestsMux.Lock()
-	numRequests := len(eventRequests)
-	var body string
-	if numRequests > 0 {
-		body = string(eventRequests[0].Body)
-	}
-	eventRequestsMux.Unlock()
-
-	if numRequests != 1 {
-		t.Fatalf("Expected 1 event request. actual=%d", numRequests)
-	}
-	lines := strings.Split(strings.TrimSpace(body), "\n")
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
 	if len(lines) != 1 {
 		t.Fatalf("Expected 1 JSONL event. actual=%d lines", len(lines))
 	}
@@ -459,56 +460,146 @@ func TestEvent(t *testing.T) {
 }
 
 func TestEventBatching(t *testing.T) {
-	setupEvents(t)
+	control := setupEvents(t)
 	defer teardown()
 
 	Configure(Configuration{EventsBatchSize: 2})
 
 	Event("event1", map[string]interface{}{"data": "first"})
 
-	time.Sleep(10 * time.Millisecond)
-	eventRequestsMux.Lock()
-	numRequests1 := len(eventRequests)
-	eventRequestsMux.Unlock()
-	if numRequests1 != 0 {
-		t.Errorf("Expected no requests before batch size reached. actual=%d", numRequests1)
+	select {
+	case <-control:
+		t.Errorf("Expected no requests before batch size reached")
+	case <-time.After(50 * time.Millisecond):
 	}
 
 	Event("event2", map[string]interface{}{"data": "second"})
 
-	time.Sleep(10 * time.Millisecond)
-	eventRequestsMux.Lock()
-	numRequests2 := len(eventRequests)
-	eventRequestsMux.Unlock()
-	if numRequests2 != 1 {
-		t.Fatalf("Expected 1 batch request when batch size reached. actual=%d", numRequests2)
+	select {
+	case req := <-control:
+		req.Response <- 201
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 batch request when batch size reached")
 	}
 }
 
 func TestEventTimeout(t *testing.T) {
-	setupEvents(t)
+	control := setupEvents(t)
 	defer teardown()
 
 	Configure(Configuration{EventsBatchSize: 10, EventsTimeout: 50 * time.Millisecond})
 
 	Event("event1", map[string]interface{}{"data": "first"})
 
-	time.Sleep(25 * time.Millisecond) // Wait less than timeout
-	eventRequestsMux.Lock()
-	numRequests1 := len(eventRequests)
-	eventRequestsMux.Unlock()
-	if numRequests1 != 0 {
-		t.Errorf("Expected no immediate requests. actual=%d", numRequests1)
+	select {
+	case <-control:
+		t.Errorf("Expected no immediate requests")
+	case <-time.After(25 * time.Millisecond):
 	}
 
-	time.Sleep(50 * time.Millisecond) // Wait for timeout
-
-	eventRequestsMux.Lock()
-	numRequests2 := len(eventRequests)
-	eventRequestsMux.Unlock()
-	if numRequests2 != 1 {
-		t.Fatalf("Expected 1 request after timeout. actual=%d", numRequests2)
+	select {
+	case req := <-control:
+		req.Response <- 201
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 request after timeout")
 	}
+}
+
+func TestEventContextCancellation(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	Configure(Configuration{EventsBatchSize: 10, Context: ctx})
+
+	Event("test_event", map[string]interface{}{"data": "should be flushed"})
+
+	select {
+	case <-control:
+		t.Errorf("Expected no requests before context cancellation")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	cancel()
+
+	select {
+	case req := <-control:
+		req.Response <- 201
+		lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+		var event map[string]interface{}
+		json.Unmarshal([]byte(lines[0]), &event)
+
+		if event["data"] != "should be flushed" {
+			t.Errorf("Expected event data 'should be flushed'. actual=%v", event["data"])
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 request after context cancellation")
+	}
+}
+
+func parseEvents(body string) []map[string]interface{} {
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	events := make([]map[string]interface{}, len(lines))
+
+	for i, line := range lines {
+		json.Unmarshal([]byte(line), &events[i])
+	}
+
+	return events
+}
+
+func TestEventMaxQueueSize(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 10, EventsMaxQueueSize: 2})
+
+	Event("old_event", map[string]interface{}{"data": "should be dropped"})
+	Event("middle_event", map[string]interface{}{"data": "middle"})
+	Event("new_event", map[string]interface{}{"data": "newest"})
+
+	DefaultClient.eventsWorker.Flush()
+
+	select {
+	case req := <-control:
+		req.Response <- 201
+		events := parseEvents(string(req.Body))
+
+		if len(events) != 2 {
+			t.Fatalf("Expected 2 events. actual=%d", len(events))
+		}
+
+		expectedData := []string{"middle", "newest"}
+		for i, expected := range expectedData {
+			if events[i]["data"] != expected {
+				t.Errorf("Expected event %d data '%s'. actual=%v", i, expected, events[i]["data"])
+			}
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 request")
+	}
+}
+
+func TestEventFailureRecovery(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 2, EventsMaxQueueSize: 5, EventsMaxRetries: 3, EventsTimeout: 50 * time.Millisecond})
+
+	Event("1", map[string]interface{}{"data": "first"})
+	Event("2", map[string]interface{}{"data": "second"})
+
+	req1 := <-control
+	fmt.Println("First attempt", string(req1.Body))
+	req1.Response <- 500
+
+	req2 := <-control
+	fmt.Println("Second attempt", string(req2.Body))
+	req2.Response <- 500
+
+	req3 := <-control
+	fmt.Println("Third attempt", string(req3.Body))
+	req3.Response <- 201
 }
 
 func TestHandlerCallsHandler(t *testing.T) {

@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"context"
 	"log"
 	"os"
 	"strconv"
@@ -15,17 +16,20 @@ type Logger interface {
 
 // Configuration manages the configuration for the client.
 type Configuration struct {
-	APIKey           string
-	Root             string
-	Env              string
-	Hostname         string
-	Endpoint         string
-	Sync             bool
-	Timeout          time.Duration
-	Logger           Logger
-	Backend          Backend
-	EventsBatchSize  int
-	EventsTimeout    time.Duration
+	APIKey             string
+	Root               string
+	Env                string
+	Hostname           string
+	Endpoint           string
+	Sync               bool
+	Timeout            time.Duration
+	Logger             Logger
+	Backend            Backend
+	Context            context.Context
+	EventsBatchSize    int
+	EventsTimeout      time.Duration
+	EventsMaxQueueSize int
+	EventsMaxRetries   int
 }
 
 func (c1 *Configuration) update(c2 *Configuration) *Configuration {
@@ -53,11 +57,20 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.Backend != nil {
 		c1.Backend = c2.Backend
 	}
+	if c2.Context != nil {
+		c1.Context = c2.Context
+	}
 	if c2.EventsBatchSize > 0 {
 		c1.EventsBatchSize = c2.EventsBatchSize
 	}
 	if c2.EventsTimeout > 0 {
 		c1.EventsTimeout = c2.EventsTimeout
+	}
+	if c2.EventsMaxQueueSize > 0 {
+		c1.EventsMaxQueueSize = c2.EventsMaxQueueSize
+	}
+	if c2.EventsMaxRetries > 0 {
+		c1.EventsMaxRetries = c2.EventsMaxRetries
 	}
 
 	c1.Sync = c2.Sync
@@ -66,16 +79,19 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 
 func newConfig(c Configuration) *Configuration {
 	config := &Configuration{
-		APIKey:          getEnv("HONEYBADGER_API_KEY"),
-		Root:            getPWD(),
-		Env:             getEnv("HONEYBADGER_ENV"),
-		Hostname:        getHostname(),
-		Endpoint:        getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
-		Timeout:         getTimeout(),
-		Logger:          log.New(os.Stderr, "[honeybadger] ", log.Flags()),
-		Sync:            getSync(),
-		EventsBatchSize: 1000,
-		EventsTimeout:   30 * time.Second,
+		APIKey:             getEnv("HONEYBADGER_API_KEY"),
+		Root:               getPWD(),
+		Env:                getEnv("HONEYBADGER_ENV"),
+		Hostname:           getHostname(),
+		Endpoint:           getEnv("HONEYBADGER_ENDPOINT", "https://api.honeybadger.io"),
+		Timeout:            getTimeout(),
+		Logger:             log.New(os.Stderr, "[honeybadger] ", log.Flags()),
+		Sync:               getSync(),
+		Context:            context.Background(),
+		EventsBatchSize:    1000,
+		EventsTimeout:      30 * time.Second,
+		EventsMaxQueueSize: 100000,
+		EventsMaxRetries:   3,
 	}
 	config.update(&c)
 

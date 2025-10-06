@@ -6,36 +6,59 @@ import (
 	"time"
 )
 
+type Batch struct {
+	events   []*eventPayload
+	attempts int
+}
+
 type EventsWorker struct {
-	backend   Backend
-	batchSize int
-	timeout   time.Duration
+	backend      Backend
+	batchSize    int
+	timeout      time.Duration
+	maxQueueSize int
+	maxRetries   int
+	logger       Logger
 
-	in      chan *eventPayload
-	flushCh chan struct{}
+	queue     *ringBuffer
+	queueSize int
+	batches   []*Batch
 
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-	once   sync.Once
+	in         chan *eventPayload
+	flushCh    chan struct{}
+	shutdownCh chan struct{}
+
+	wg   sync.WaitGroup
+	once sync.Once
 }
 
 func NewEventsWorker(cfg *Configuration) *EventsWorker {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := cfg.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	w := &EventsWorker{
-		backend:   cfg.Backend,
-		batchSize: cfg.EventsBatchSize,
-		timeout:   cfg.EventsTimeout,
-		in:        make(chan *eventPayload),
-		flushCh:   make(chan struct{}, 1),
-		cancel:    cancel,
+		backend:      cfg.Backend,
+		batchSize:    cfg.EventsBatchSize,
+		timeout:      cfg.EventsTimeout,
+		maxQueueSize: cfg.EventsMaxQueueSize,
+		maxRetries:   cfg.EventsMaxRetries,
+		logger:       cfg.Logger,
+		queue:        newRingBuffer(cfg.EventsBatchSize + 1),
+		queueSize:    0,
+		batches:      make([]*Batch, 0),
+		in:           make(chan *eventPayload),
+		flushCh:      make(chan struct{}, 1),
+		shutdownCh:   make(chan struct{}),
 	}
 	w.wg.Add(1)
 	go w.run(ctx)
 	return w
 }
 
-func (w *EventsWorker) Push(e *eventPayload) { w.in <- e }
+func (w *EventsWorker) Push(e *eventPayload) {
+	w.in <- e
+}
 
 func (w *EventsWorker) Flush() {
 	select {
@@ -46,29 +69,64 @@ func (w *EventsWorker) Flush() {
 
 func (w *EventsWorker) Stop() {
 	w.once.Do(func() {
-		w.cancel()
+		close(w.shutdownCh)
 		w.wg.Wait()
 	})
+}
+
+func (w *EventsWorker) AttemptSend() bool {
+	events := w.queue.drain()
+	if len(events) > 0 {
+		w.batches = append(w.batches, &Batch{events: events, attempts: 0})
+	}
+	w.queue = newRingBuffer(w.batchSize + 1)
+
+	for len(w.batches) > 0 {
+		batch := w.batches[0]
+		if batch.attempts > w.maxRetries {
+			w.logger.Printf("events worker dropping batch after %d failed attempts\n", batch.attempts)
+			w.batches = w.batches[1:]
+			w.queueSize -= len(batch.events)
+			continue
+		}
+
+		if err := w.backend.Event(batch.events); err != nil {
+			batch.attempts++
+			w.logger.Printf("events worker send error: %v\n", err)
+			break
+		} else {
+			w.batches = w.batches[1:]
+			w.queueSize -= len(batch.events)
+		}
+	}
+
+	return len(w.batches) > 0
 }
 
 func (w *EventsWorker) run(ctx context.Context) {
 	defer w.wg.Done()
 
-	batch := make([]*eventPayload, 0, w.batchSize)
 	ticker := time.NewTicker(w.timeout)
 	defer ticker.Stop()
 
 	flush := func() {
-		if len(batch) == 0 {
+		if w.queue.len() == 0 && len(w.batches) == 0 {
 			return
 		}
-		w.backend.Event(batch)
-		batch = batch[:0]
+
+		hasPendingBatches := w.AttemptSend()
+		if hasPendingBatches {
+			ticker.Reset(w.timeout)
+		}
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
+			flush()
+			return
+
+		case <-w.shutdownCh:
 			flush()
 			return
 
@@ -79,8 +137,18 @@ func (w *EventsWorker) run(ctx context.Context) {
 			flush()
 
 		case e := <-w.in:
-			batch = append(batch, e)
-			if len(batch) >= w.batchSize {
+			w.queue.push(e)
+
+			if w.queueSize >= w.maxQueueSize {
+				// Drop oldest if at capacity
+				if w.queue.len() > 0 {
+					w.queue.pop()
+				}
+			} else {
+				w.queueSize++
+			}
+
+			if w.queue.len() >= w.batchSize {
 				flush()
 				ticker.Reset(w.timeout)
 			}
