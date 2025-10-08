@@ -110,6 +110,11 @@ The following options are available to you:
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
+| EventsBatchSize | `int` | 1000 | `500` | n/a |
+| EventsTimeout | `time.Duration` | 30 seconds | `10 * time.Second` | n/a |
+| EventsMaxQueueSize | `int` | 100000 | `50000` | n/a |
+| EventsMaxRetries | `int` | 3 | `5` | n/a |
+| EventsThrottleWait | `time.Duration` | 60 seconds | `30 * time.Second` | n/a |
 
 
 ## Public Interface
@@ -221,6 +226,56 @@ honeybadger.BeforeNotify(
   func(notice *honeybadger.Notice) error {
     // Errors in Honeybadger will always have the class name "GenericError".
     notice.ErrorClass = "GenericError"
+    return nil
+  }
+)
+```
+
+---
+
+### `honeybadger.Event()`: Send events to Honeybadger Insights.
+
+Send custom events to Honeybadger Insights for tracking application behavior and metrics.
+
+#### Examples:
+
+```go
+honeybadger.Event("user_login", map[string]any{
+  "user_id": 123,
+  "email": "user@example.com",
+})
+```
+
+Events are batched and sent asynchronously. Configuration options are available
+for batching, retries, and throttling. See [Configuration](#configuration) for details.
+
+---
+
+### `honeybadger.BeforeEvent()`: Add a callback to skip or modify event data.
+
+Similar to `BeforeNotify()`, you can add callbacks to modify event data or skip events entirely before they are sent.
+
+#### Examples:
+
+To modify or augment event data:
+
+```go
+honeybadger.BeforeEvent(
+  func(event map[string]any) error {
+    event["environment"] = "production"
+    return nil
+  }
+)
+```
+
+To skip events, use `honeybadger.ErrEventDropped`:
+
+```go
+honeybadger.BeforeEvent(
+  func(event map[string]any) error {
+    if event["event_type"] == "debug_event" {
+      return honeybadger.ErrEventDropped
+    }
     return nil
   }
 )

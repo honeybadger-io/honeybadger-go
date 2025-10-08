@@ -94,7 +94,7 @@ func newConfig(c Configuration) *Configuration {
 		Context:            context.Background(),
 		EventsThrottleWait: 60 * time.Second,
 		EventsBatchSize:    1000,
-		EventsTimeout:      5 * time.Second,
+		EventsTimeout:      30 * time.Second,
 		EventsMaxQueueSize: 100000,
 		EventsMaxRetries:   3,
 	}
