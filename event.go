@@ -25,20 +25,3 @@ func newEventPayload(eventType string, eventData map[string]any) *eventPayload {
 
 	return &eventPayload{data: data}
 }
-
-type eventBatch struct {
-	events []*eventPayload
-}
-
-func (b *eventBatch) toJSON() []byte {
-	var events []map[string]any
-	for _, event := range b.events {
-		events = append(events, event.data)
-	}
-	h := hash{"events": events}
-	return h.toJSON()
-}
-
-func newEventBatch(events []*eventPayload) *eventBatch {
-	return &eventBatch{events: events}
-}

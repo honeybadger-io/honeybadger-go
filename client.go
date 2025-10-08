@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"errors"
 	"net/http"
 )
 
@@ -17,7 +18,10 @@ type Backend interface {
 	Event(events []*eventPayload) error
 }
 
+var ErrEventDropped = errors.New("event dropped by handler")
+
 type noticeHandler func(*Notice) error
+type eventHandler func(map[string]any) error
 
 // Client is the manager for interacting with the Honeybadger service. It holds
 // the configuration and implements the public API.
@@ -27,6 +31,7 @@ type Client struct {
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
 	eventsWorker         *EventsWorker
+	beforeEventHandlers  []eventHandler
 }
 
 func eventsConfigChanged(config *Configuration) bool {
@@ -61,6 +66,10 @@ func (client *Client) BeforeNotify(handler func(notice *Notice) error) {
 	client.beforeNotifyHandlers = append(client.beforeNotifyHandlers, handler)
 }
 
+func (client *Client) BeforeEvent(handler func(event map[string]any) error) {
+	client.beforeEventHandlers = append(client.beforeEventHandlers, handler)
+}
+
 // Notify reports the error err to the Honeybadger service.
 func (client *Client) Notify(err interface{}, extra ...interface{}) (string, error) {
 	extra = append([]interface{}{client.context.internal}, extra...)
@@ -92,6 +101,17 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 
 func (client *Client) Event(eventType string, eventData map[string]interface{}) error {
 	event := newEventPayload(eventType, eventData)
+
+	for _, handler := range client.beforeEventHandlers {
+		err := handler(event.data)
+
+		if err == ErrEventDropped {
+			return nil
+		} else if err != nil {
+			return err
+		}
+	}
+
 	client.eventsWorker.Push(event)
 	return nil
 }

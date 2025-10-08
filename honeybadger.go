@@ -112,3 +112,10 @@ func Handler(h http.Handler) http.Handler {
 func BeforeNotify(handler func(notice *Notice) error) {
 	DefaultClient.BeforeNotify(handler)
 }
+
+// BeforeEvent adds a callback function which is run before an event is
+// sent to Honeybadger. If any function returns an error the event
+// will be dropped, otherwise it will be sent.
+func BeforeEvent(handler func(event map[string]any) error) {
+	DefaultClient.BeforeEvent(handler)
+}

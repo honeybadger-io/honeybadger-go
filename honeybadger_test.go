@@ -118,6 +118,8 @@ func teardown() {
 		DefaultClient.eventsWorker.Stop()
 	}
 	*DefaultClient.Config = defaultConfig
+	DefaultClient.beforeNotifyHandlers = nil
+	DefaultClient.beforeEventHandlers = nil
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -754,6 +756,81 @@ func TestEventShutdownWithPendingRetries(t *testing.T) {
 		t.Errorf("Expected failed batch to be flushed on shutdown. actual=%v", events)
 	}
 	req2.Response <- 201
+}
+
+func TestEventWithHandler(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	BeforeEvent(func(event map[string]any) error {
+		event["modified"] = true
+		return nil
+	})
+
+	Event("test_event", map[string]any{"data": "original"})
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	var event map[string]any
+	json.Unmarshal([]byte(lines[0]), &event)
+
+	if event["modified"] != true {
+		t.Errorf("Expected handler to modify event. actual=%v", event)
+	}
+	if event["data"] != "original" {
+		t.Errorf("Expected original data to be preserved. actual=%v", event["data"])
+	}
+}
+
+func TestEventWithHandlerError(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	err := fmt.Errorf("skip this event")
+	BeforeEvent(func(event map[string]any) error {
+		return err
+	})
+
+	eventErr := Event("test_event", map[string]any{"data": "test"})
+
+	if eventErr != err {
+		t.Errorf("Expected Event to return handler error. actual=%v", eventErr)
+	}
+
+	select {
+	case <-control:
+		t.Errorf("Expected no event to be sent when handler returns error")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEventWithHandlerDropped(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	BeforeEvent(func(event map[string]any) error {
+		return ErrEventDropped
+	})
+
+	eventErr := Event("test_event", map[string]any{"data": "test"})
+
+	if eventErr != nil {
+		t.Errorf("Expected Event to return nil when ErrEventDropped. actual=%v", eventErr)
+	}
+
+	select {
+	case <-control:
+		t.Errorf("Expected no event to be sent when handler returns ErrEventDropped")
+	case <-time.After(100 * time.Millisecond):
+	}
 }
 
 func TestHandlerCallsHandler(t *testing.T) {
