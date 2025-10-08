@@ -86,6 +86,14 @@ Don't forget to destroy the Heroku app after you're done so that you aren't char
 
 The code for the sample app is [available on Github](https://github.com/honeybadger-io/crywolf-go), in case you'd like to read through it, or run it locally.
 
+## Supported Go Versions
+
+This library supports the last two major Go releases, consistent with the Go team's [release policy](https://go.dev/doc/devel/release):
+
+- Go 1.25.x
+- Go 1.24.x
+
+Older versions may work but are not officially supported or tested.
 
 ## Configuration
 
