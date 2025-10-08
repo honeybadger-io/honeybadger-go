@@ -27,6 +27,7 @@ type Configuration struct {
 	Backend            Backend
 	Context            context.Context
 	EventsBatchSize    int
+	EventsThrottleWait time.Duration
 	EventsTimeout      time.Duration
 	EventsMaxQueueSize int
 	EventsMaxRetries   int
@@ -72,6 +73,9 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.EventsMaxRetries > 0 {
 		c1.EventsMaxRetries = c2.EventsMaxRetries
 	}
+	if c2.EventsThrottleWait > 0 {
+		c1.EventsThrottleWait = c2.EventsThrottleWait
+	}
 
 	c1.Sync = c2.Sync
 	return c1
@@ -88,8 +92,9 @@ func newConfig(c Configuration) *Configuration {
 		Logger:             log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 		Sync:               getSync(),
 		Context:            context.Background(),
+		EventsThrottleWait: 60 * time.Second,
 		EventsBatchSize:    1000,
-		EventsTimeout:      30 * time.Second,
+		EventsTimeout:      5 * time.Second,
 		EventsMaxQueueSize: 100000,
 		EventsMaxRetries:   3,
 	}

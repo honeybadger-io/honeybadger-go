@@ -77,7 +77,7 @@ func (s *server) sendRequest(path string, body []byte, contentType string) error
 	}()
 
 	switch resp.StatusCode {
-	case 201:
+	case 200, 201:
 		return nil
 	case 429, 503:
 		return ErrRateExceeded
@@ -86,9 +86,12 @@ func (s *server) sendRequest(path string, body []byte, contentType string) error
 	case 403:
 		return ErrUnauthorized
 	default:
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf(
-			"request failed status=%d expected=%d",
+			"request failed status=%d expected=%d message=%q",
 			resp.StatusCode,
-			http.StatusCreated)
+			http.StatusCreated,
+			string(bodyBytes),
+		)
 	}
 }

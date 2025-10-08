@@ -57,6 +57,12 @@ func newHTTPRequest(r *http.Request) *HTTPRequest {
 	return &HTTPRequest{r, body}
 }
 
+func assertMethod(t *testing.T, r *http.Request, method string) {
+	if r.Method != method {
+		t.Errorf("Unexpected request method. actual=%#v expected=%#v", r.Method, method)
+	}
+}
+
 func setup(t *testing.T) {
 	mux = http.NewServeMux()
 	ts = httptest.NewServer(mux)
@@ -178,7 +184,7 @@ func TestNotifyWithErrorClass(t *testing.T) {
 	}
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
 	sent_klass, _ := error_payload["class"].(string)
 
 	if !testNoticePayload(t, payload) {
@@ -203,14 +209,14 @@ func TestNotifyWithTags(t *testing.T) {
 	}
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
-	sent_tags, _ := error_payload["tags"].([]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
+	sent_tags, _ := error_payload["tags"].([]any)
 
 	if !testNoticePayload(t, payload) {
 		return
 	}
 
-	if got, want := sent_tags, []interface{}{"timeout", "http"}; !reflect.DeepEqual(got, want) {
+	if got, want := sent_tags, []any{"timeout", "http"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("Custom error class should override default. expected=%#v actual=%#v.", want, got)
 		return
 	}
@@ -228,7 +234,7 @@ func TestNotifyWithFingerprint(t *testing.T) {
 	}
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
 	sent_fingerprint, _ := error_payload["fingerprint"].(string)
 
 	if !testNoticePayload(t, payload) {
@@ -274,34 +280,34 @@ func TestNotifyWithRequest(t *testing.T) {
 
 	// Request[1] - Checks URL & query extraction
 	payload := requests[1].decodeJSON()
-	request_payload, _ := payload["request"].(map[string]interface{})
+	request_payload, _ := payload["request"].(map[string]any)
 
 	if url, _ := request_payload["url"].(string); url != reqUrl {
 		t.Errorf("Request URL should be extracted. expected=%v actual=%#v.", "/fail", url)
 		return
 	}
 
-	params, _ := request_payload["params"].(map[string]interface{})
-	values, _ := params["qKey"].([]interface{})
+	params, _ := request_payload["params"].(map[string]any)
+	values, _ := params["qKey"].([]any)
 	if len(params) != 1 || len(values) != 1 || values[0] != "qValue" {
 		t.Errorf("Request params should be extracted. expected=%v actual=%#v.", req.Form, params)
 	}
 
 	// Request[2] - Checks header & form extraction
 	payload = requests[2].decodeJSON()
-	request_payload, _ = payload["request"].(map[string]interface{})
+	request_payload, _ = payload["request"].(map[string]any)
 
 	if !testNoticePayload(t, payload) {
 		return
 	}
 
-	cgi, _ := request_payload["cgi_data"].(map[string]interface{})
+	cgi, _ := request_payload["cgi_data"].(map[string]any)
 	if len(cgi) != 1 || cgi["HTTP_ACCEPT"] != "application/test-data" {
 		t.Errorf("Request cgi_data should be extracted. expected=%v actual=%#v.", req.Header, cgi)
 	}
 
-	params, _ = request_payload["params"].(map[string]interface{})
-	values, _ = params["fKey"].([]interface{})
+	params, _ = request_payload["params"].(map[string]any)
+	values, _ = params["fKey"].([]any)
 	if len(params) != 1 || len(values) != 1 || values[0] != "fValue" {
 		t.Errorf("Request params should be extracted. expected=%v actual=%#v.", req.Form, params)
 	}
@@ -338,7 +344,7 @@ func TestNotifyWithHandler(t *testing.T) {
 	Flush()
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
 	sent_fingerprint, _ := error_payload["fingerprint"].(string)
 
 	if !testRequestCount(t, 1) {
@@ -379,13 +385,13 @@ func assertContext(t *testing.T, payload hash, expected Context) {
 	var request, context hash
 	var ok bool
 
-	request, ok = payload["request"].(map[string]interface{})
+	request, ok = payload["request"].(map[string]any)
 	if !ok {
 		t.Errorf("Missing request in payload actual=%#v.", payload)
 		return
 	}
 
-	context, ok = request["context"].(map[string]interface{})
+	context, ok = request["context"].(map[string]any)
 	if !ok {
 		t.Errorf("Missing context in request payload actual=%#v.", request)
 		return
@@ -410,7 +416,7 @@ func testRequestCount(t *testing.T, num int) bool {
 func testNoticePayload(t *testing.T, payload hash) bool {
 	for _, key := range []string{"notifier", "error", "request", "server"} {
 		switch payload[key].(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			// OK
 		default:
 			t.Errorf("Expected payload to include %v hash. expected=%#v actual=%#v", key, key, payload)
@@ -426,7 +432,7 @@ func TestEvent(t *testing.T) {
 
 	Configure(Configuration{EventsBatchSize: 1})
 
-	eventData := map[string]interface{}{
+	eventData := map[string]any{
 		"message": "test message",
 		"user_id": 123,
 	}
@@ -444,7 +450,7 @@ func TestEvent(t *testing.T) {
 		t.Fatalf("Expected 1 JSONL event. actual=%d lines", len(lines))
 	}
 
-	var event map[string]interface{}
+	var event map[string]any
 	if err := json.Unmarshal([]byte(lines[0]), &event); err != nil {
 		t.Fatalf("Failed to parse JSONL event: %v", err)
 	}
@@ -465,7 +471,7 @@ func TestEventBatching(t *testing.T) {
 
 	Configure(Configuration{EventsBatchSize: 2})
 
-	Event("event1", map[string]interface{}{"data": "first"})
+	Event("event1", map[string]any{"data": "first"})
 
 	select {
 	case <-control:
@@ -473,7 +479,7 @@ func TestEventBatching(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 	}
 
-	Event("event2", map[string]interface{}{"data": "second"})
+	Event("event2", map[string]any{"data": "second"})
 
 	select {
 	case req := <-control:
@@ -489,7 +495,7 @@ func TestEventTimeout(t *testing.T) {
 
 	Configure(Configuration{EventsBatchSize: 10, EventsTimeout: 50 * time.Millisecond})
 
-	Event("event1", map[string]interface{}{"data": "first"})
+	Event("event1", map[string]any{"data": "first"})
 
 	select {
 	case <-control:
@@ -512,7 +518,7 @@ func TestEventContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	Configure(Configuration{EventsBatchSize: 10, Context: ctx})
 
-	Event("test_event", map[string]interface{}{"data": "should be flushed"})
+	Event("test_event", map[string]any{"data": "should be flushed"})
 
 	select {
 	case <-control:
@@ -526,7 +532,7 @@ func TestEventContextCancellation(t *testing.T) {
 	case req := <-control:
 		req.Response <- 201
 		lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
-		var event map[string]interface{}
+		var event map[string]any
 		json.Unmarshal([]byte(lines[0]), &event)
 
 		if event["data"] != "should be flushed" {
@@ -537,9 +543,9 @@ func TestEventContextCancellation(t *testing.T) {
 	}
 }
 
-func parseEvents(body string) []map[string]interface{} {
+func parseEvents(body string) []map[string]any {
 	lines := strings.Split(strings.TrimSpace(body), "\n")
-	events := make([]map[string]interface{}, len(lines))
+	events := make([]map[string]any, len(lines))
 
 	for i, line := range lines {
 		json.Unmarshal([]byte(line), &events[i])
@@ -554,9 +560,9 @@ func TestEventMaxQueueSize(t *testing.T) {
 
 	Configure(Configuration{EventsBatchSize: 10, EventsMaxQueueSize: 2})
 
-	Event("old_event", map[string]interface{}{"data": "should be dropped"})
-	Event("middle_event", map[string]interface{}{"data": "middle"})
-	Event("new_event", map[string]interface{}{"data": "newest"})
+	Event("old_event", map[string]any{"data": "should be dropped"})
+	Event("middle_event", map[string]any{"data": "middle"})
+	Event("new_event", map[string]any{"data": "newest"})
 
 	DefaultClient.eventsWorker.Flush()
 
@@ -584,10 +590,15 @@ func TestEventFailureRecovery(t *testing.T) {
 	control := setupEvents(t)
 	defer teardown()
 
-	Configure(Configuration{EventsBatchSize: 2, EventsMaxQueueSize: 5, EventsMaxRetries: 3, EventsTimeout: 50 * time.Millisecond})
+	Configure(Configuration{
+		EventsBatchSize:    2,
+		EventsMaxQueueSize: 5,
+		EventsMaxRetries:   3,
+		EventsTimeout:      50 * time.Millisecond,
+	})
 
-	Event("1", map[string]interface{}{"data": "first"})
-	Event("2", map[string]interface{}{"data": "second"})
+	Event("1", map[string]any{"data": "first"})
+	Event("2", map[string]any{"data": "second"})
 
 	req1 := <-control
 	fmt.Println("First attempt", string(req1.Body))
@@ -602,6 +613,76 @@ func TestEventFailureRecovery(t *testing.T) {
 	req3.Response <- 201
 }
 
+func TestEventQueueSizeIncludesPendingBatches(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:    2,
+		EventsMaxQueueSize: 3,
+		EventsMaxRetries:   3,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 500
+
+	Event("3", map[string]any{"data": "3"})
+	Event("4", map[string]any{"data": "4"})
+
+	time.Sleep(50 * time.Millisecond)
+
+	DefaultClient.eventsWorker.Flush()
+
+	req2 := <-control
+	req2.Response <- 201
+
+	req3 := <-control
+	events := parseEvents(string(req3.Body))
+
+	if len(events) != 1 {
+		t.Errorf("Expected 1 event after dropping. actual=%d", len(events))
+	}
+	if events[0]["data"] != "4" {
+		t.Errorf("Expected newest event '4'. actual=%v", events[0]["data"])
+	}
+	req3.Response <- 201
+}
+
+func TestEventThrottling(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:    2,
+		EventsMaxRetries:   2,
+		EventsThrottleWait: 50 * time.Millisecond,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 429
+
+	Event("3", map[string]any{"data": "3"})
+	Event("4", map[string]any{"data": "4"})
+
+	req2 := <-control
+	req2.Response <- 429
+
+	req3 := <-control
+	req3.Response <- 201
+
+	select {
+	case <-control:
+		t.Errorf("Expected no more batches, events 3 and 4 should have been dropped during throttling")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
 func TestHandlerCallsHandler(t *testing.T) {
 	mockHandler := &MockedHandler{}
 	mockHandler.On("ServeHTTP").Return()
@@ -612,10 +693,4 @@ func TestHandlerCallsHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	mockHandler.AssertCalled(t, "ServeHTTP")
-}
-
-func assertMethod(t *testing.T, r *http.Request, method string) {
-	if r.Method != method {
-		t.Errorf("Unexpected request method. actual=%#v expected=%#v", r.Method, method)
-	}
 }

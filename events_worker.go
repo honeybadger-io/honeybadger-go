@@ -14,14 +14,17 @@ type Batch struct {
 type EventsWorker struct {
 	backend      Backend
 	batchSize    int
+	throttleWait time.Duration
 	timeout      time.Duration
 	maxQueueSize int
 	maxRetries   int
 	logger       Logger
 
-	queue     *ringBuffer
-	queueSize int
-	batches   []*Batch
+	ticker     *time.Ticker
+	queue      *ringBuffer
+	queueSize  int
+	batches    []*Batch
+	throttling bool
 
 	in         chan *eventPayload
 	flushCh    chan struct{}
@@ -43,8 +46,10 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 		timeout:      cfg.EventsTimeout,
 		maxQueueSize: cfg.EventsMaxQueueSize,
 		maxRetries:   cfg.EventsMaxRetries,
+		throttleWait: cfg.EventsThrottleWait,
 		logger:       cfg.Logger,
 		queue:        newRingBuffer(cfg.EventsBatchSize + 1),
+		throttling:   false,
 		queueSize:    0,
 		batches:      make([]*Batch, 0),
 		in:           make(chan *eventPayload),
@@ -57,6 +62,10 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 }
 
 func (w *EventsWorker) Push(e *eventPayload) {
+	if w.throttling {
+		return
+	}
+
 	w.in <- e
 }
 
@@ -90,11 +99,17 @@ func (w *EventsWorker) AttemptSend() bool {
 			continue
 		}
 
-		if err := w.backend.Event(batch.events); err != nil {
+		err := w.backend.Event(batch.events)
+
+		if err == ErrRateExceeded {
+			w.throttling = true
+			w.ticker.Reset(w.throttleWait)
+		} else if err != nil {
 			batch.attempts++
 			w.logger.Printf("events worker send error: %v\n", err)
 			break
 		} else {
+			w.throttling = false
 			w.batches = w.batches[1:]
 			w.queueSize -= len(batch.events)
 		}
@@ -106,8 +121,8 @@ func (w *EventsWorker) AttemptSend() bool {
 func (w *EventsWorker) run(ctx context.Context) {
 	defer w.wg.Done()
 
-	ticker := time.NewTicker(w.timeout)
-	defer ticker.Stop()
+	w.ticker = time.NewTicker(w.timeout)
+	defer w.ticker.Stop()
 
 	flush := func() {
 		if w.queue.len() == 0 && len(w.batches) == 0 {
@@ -116,7 +131,7 @@ func (w *EventsWorker) run(ctx context.Context) {
 
 		hasPendingBatches := w.AttemptSend()
 		if hasPendingBatches {
-			ticker.Reset(w.timeout)
+			w.ticker.Reset(w.timeout)
 		}
 	}
 
@@ -130,7 +145,7 @@ func (w *EventsWorker) run(ctx context.Context) {
 			flush()
 			return
 
-		case <-ticker.C:
+		case <-w.ticker.C:
 			flush()
 
 		case <-w.flushCh:
@@ -150,7 +165,7 @@ func (w *EventsWorker) run(ctx context.Context) {
 
 			if w.queue.len() >= w.batchSize {
 				flush()
-				ticker.Reset(w.timeout)
+				w.ticker.Reset(w.timeout)
 			}
 		}
 	}
