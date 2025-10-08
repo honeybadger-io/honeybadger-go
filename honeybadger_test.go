@@ -683,6 +683,79 @@ func TestEventThrottling(t *testing.T) {
 	}
 }
 
+func TestEventMultipleBatchRetryOrdering(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:  2,
+		EventsMaxRetries: 3,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 500
+
+	Event("3", map[string]any{"data": "3"})
+	Event("4", map[string]any{"data": "4"})
+
+	req2 := <-control
+	events := parseEvents(string(req2.Body))
+	if events[0]["data"] != "1" || events[1]["data"] != "2" {
+		t.Errorf("Expected first batch to retry. actual=%v", events)
+	}
+	req2.Response <- 500
+
+	req3 := <-control
+	events = parseEvents(string(req3.Body))
+	if events[0]["data"] != "1" || events[1]["data"] != "2" {
+		t.Errorf("Expected first batch to retry again. actual=%v", events)
+	}
+	req3.Response <- 201
+
+	req4 := <-control
+	events = parseEvents(string(req4.Body))
+	if len(events) != 2 {
+		t.Fatalf("Expected second batch. actual=%d events", len(events))
+	}
+	if events[0]["data"] != "3" || events[1]["data"] != "4" {
+		t.Errorf("Expected second batch after first succeeds. actual=%v", events)
+	}
+	req4.Response <- 201
+}
+
+func TestEventShutdownWithPendingRetries(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	Configure(Configuration{
+		EventsBatchSize:  2,
+		EventsMaxRetries: 3,
+		Context:          ctx,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 500
+
+	cancel()
+
+	req2 := <-control
+	events := parseEvents(string(req2.Body))
+	if len(events) != 2 {
+		t.Fatalf("Expected 2 events in retry batch on shutdown. actual=%d", len(events))
+	}
+	if events[0]["data"] != "1" || events[1]["data"] != "2" {
+		t.Errorf("Expected failed batch to be flushed on shutdown. actual=%v", events)
+	}
+	req2.Response <- 201
+}
+
 func TestHandlerCallsHandler(t *testing.T) {
 	mockHandler := &MockedHandler{}
 	mockHandler.On("ServeHTTP").Return()
