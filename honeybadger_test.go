@@ -692,6 +692,7 @@ func TestEventMultipleBatchRetryOrdering(t *testing.T) {
 	Configure(Configuration{
 		EventsBatchSize:  2,
 		EventsMaxRetries: 3,
+		EventsTimeout:    100 * time.Millisecond,
 	})
 
 	Event("1", map[string]any{"data": "1"})

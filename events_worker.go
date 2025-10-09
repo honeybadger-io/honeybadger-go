@@ -3,6 +3,7 @@ package honeybadger
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,7 +25,7 @@ type EventsWorker struct {
 	queue      *ringBuffer
 	queueSize  int
 	batches    []*Batch
-	throttling bool
+	throttling atomic.Bool
 
 	in         chan *eventPayload
 	flushCh    chan struct{}
@@ -49,7 +50,6 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 		throttleWait: cfg.EventsThrottleWait,
 		logger:       cfg.Logger,
 		queue:        newRingBuffer(cfg.EventsBatchSize + 1),
-		throttling:   false,
 		queueSize:    0,
 		batches:      make([]*Batch, 0),
 		in:           make(chan *eventPayload),
@@ -62,7 +62,7 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 }
 
 func (w *EventsWorker) Push(e *eventPayload) {
-	if w.throttling {
+	if w.throttling.Load() {
 		return
 	}
 
@@ -102,14 +102,14 @@ func (w *EventsWorker) AttemptSend() bool {
 		err := w.backend.Event(batch.events)
 
 		if err == ErrRateExceeded {
-			w.throttling = true
+			w.throttling.Store(true)
 			w.ticker.Reset(w.throttleWait)
 		} else if err != nil {
 			batch.attempts++
 			w.logger.Printf("events worker send error: %v\n", err)
 			break
 		} else {
-			w.throttling = false
+			w.throttling.Store(false)
 			w.batches = w.batches[1:]
 			w.queueSize -= len(batch.events)
 		}
