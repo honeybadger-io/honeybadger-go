@@ -603,15 +603,15 @@ func TestEventFailureRecovery(t *testing.T) {
 	Event("2", map[string]any{"data": "second"})
 
 	req1 := <-control
-	fmt.Println("First attempt", string(req1.Body))
+	t.Log("First attempt", string(req1.Body))
 	req1.Response <- 500
 
 	req2 := <-control
-	fmt.Println("Second attempt", string(req2.Body))
+	t.Log("Second attempt", string(req2.Body))
 	req2.Response <- 500
 
 	req3 := <-control
-	fmt.Println("Third attempt", string(req3.Body))
+	t.Log("Third attempt", string(req3.Body))
 	req3.Response <- 201
 }
 

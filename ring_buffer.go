@@ -12,9 +12,9 @@ func newRingBuffer(limit int) *ringBuffer {
 }
 
 func (q *ringBuffer) push(it *eventPayload) bool {
-	if q.size == q.cap {
+	if q.size == q.cap { // full
 		return false
-	} // full
+	}
 	q.buf[q.tail] = it
 	q.tail = (q.tail + 1) % q.cap
 	q.size++

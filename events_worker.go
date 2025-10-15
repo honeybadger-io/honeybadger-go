@@ -49,12 +49,13 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 		maxRetries:   cfg.EventsMaxRetries,
 		throttleWait: cfg.EventsThrottleWait,
 		logger:       cfg.Logger,
-		queue:        newRingBuffer(cfg.EventsBatchSize + 1),
-		queueSize:    0,
-		batches:      make([]*Batch, 0),
-		in:           make(chan *eventPayload),
-		flushCh:      make(chan struct{}, 1),
-		shutdownCh:   make(chan struct{}),
+		// +1 so we can push before checking flush threshold without dropping an event.
+		queue:      newRingBuffer(cfg.EventsBatchSize + 1),
+		queueSize:  0,
+		batches:    make([]*Batch, 0),
+		in:         make(chan *eventPayload),
+		flushCh:    make(chan struct{}, 1),
+		shutdownCh: make(chan struct{}),
 	}
 	w.wg.Add(1)
 	go w.run(ctx)
