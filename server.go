@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -72,7 +72,7 @@ func (s *server) sendRequest(path string, body []byte, contentType string) error
 		return err
 	}
 	defer func() {
-		ioutil.ReadAll(resp.Body)
+		io.ReadAll(resp.Body)
 		resp.Body.Close()
 	}()
 
@@ -86,7 +86,7 @@ func (s *server) sendRequest(path string, body []byte, contentType string) error
 	case 403:
 		return ErrUnauthorized
 	default:
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf(
 			"request failed status=%d expected=%d message=%q",
 			resp.StatusCode,

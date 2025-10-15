@@ -107,23 +107,22 @@ honeybadger.Configure(honeybadger.Configuration{
 ```
 The following options are available to you:
 
-|  Name | Type | Default | Example | Environment variable |
-| ----- | ---- | ------- | ------- | -------------------- |
+| Name | Type | Default | Example | Environment variable |
+|------|------|----------|----------|----------------------|
 | APIKey | `string` | `""` | `"badger01"` | `HONEYBADGER_API_KEY` |
 | Root | `string` | The current working directory | `"/path/to/project"` | `HONEYBADGER_ROOT` |
 | Env | `string` | `""` | `"production"` | `HONEYBADGER_ENV` |
-| Hostname | `string` | The hostname of the current server. | `"badger01"` | `HONEYBADGER_HOSTNAME` |
+| Hostname | `string` | The hostname of current server | `"badger01"` | `HONEYBADGER_HOSTNAME` |
 | Endpoint | `string` | `"https://api.honeybadger.io"` | `"https://honeybadger.example.com/"` | `HONEYBADGER_ENDPOINT` |
-| Sync | `bool` | false | `true` | `HONEYBADGER_SYNC` |
+| Sync | `bool` | `false` | `true` | `HONEYBADGER_SYNC` |
 | Timeout | `time.Duration` | 3 seconds | `10 * time.Second` | `HONEYBADGER_TIMEOUT` (nanoseconds) |
 | Logger | `honeybadger.Logger` | Logs to stderr | `CustomLogger{}` | n/a |
 | Backend | `honeybadger.Backend` | HTTP backend | `CustomBackend{}` | n/a |
-| EventsBatchSize | `int` | 1000 | `500` | n/a |
-| EventsTimeout | `time.Duration` | 30 seconds | `10 * time.Second` | n/a |
-| EventsMaxQueueSize | `int` | 100000 | `50000` | n/a |
-| EventsMaxRetries | `int` | 3 | `5` | n/a |
-| EventsThrottleWait | `time.Duration` | 60 seconds | `30 * time.Second` | n/a |
-
+| EventsBatchSize | `int` | 1000 | `500` | `HONEYBADGER_EVENTS_BATCH_SIZE` |
+| EventsTimeout | `time.Duration` | 30 seconds | `10 * time.Second` | `HONEYBADGER_EVENTS_TIMEOUT` (nanoseconds) |
+| EventsMaxQueueSize | `int` | 100000 | `50000` | `HONEYBADGER_EVENTS_MAX_QUEUE_SIZE` |
+| EventsMaxRetries | `int` | 3 | `5` | `HONEYBADGER_EVENTS_MAX_RETRIES` |
+| EventsThrottleWait | `time.Duration` | 60 seconds | `30 * time.Second` | `HONEYBADGER_EVENTS_THROTTLE_WAIT` (nanoseconds)|
 
 ## Public Interface
 
