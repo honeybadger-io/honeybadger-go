@@ -8,7 +8,13 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
+  repository-projects: read # this is required by release-please-action to set the auto-release tags
+
+# Note for release-please-action: 
+# The action will set the auto-release tags for the release PR. If these tags do not already exist, the action will fail to create them.
+# Therefore, make sure that the tags are created in the repository before running the release workflow: `autorelease: pending`, `autorelease: tagged`
 
 jobs:
   release-if-needed:
@@ -16,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create Release PR
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v4
         id: release
         with:
-          token: ${{ secrets.RELEASE_PLEASE_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           release-type: go
