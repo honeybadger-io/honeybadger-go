@@ -112,6 +112,10 @@ func (client *Client) Event(eventType string, eventData map[string]interface{}) 
 		}
 	}
 
+	if client.Config.Sync {
+		return client.Config.Backend.Event([]*eventPayload{event})
+	}
+
 	client.eventsWorker.Push(event)
 	return nil
 }
