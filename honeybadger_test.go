@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +22,63 @@ import (
 type eventReqResp struct {
 	Body     []byte
 	Response chan int
+}
+
+type callAttempt struct {
+	call int
+	when time.Time
+}
+
+type rateLimitBackend struct {
+	callCh      chan callAttempt
+	mu          sync.Mutex
+	calls       int
+	lastPayload []*eventPayload
+}
+
+func newRateLimitBackend() *rateLimitBackend {
+	return &rateLimitBackend{
+		callCh: make(chan callAttempt, 4),
+	}
+}
+
+func (b *rateLimitBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *rateLimitBackend) Event(events []*eventPayload) error {
+	b.mu.Lock()
+	b.calls++
+	call := b.calls
+	if call > 1 {
+		b.lastPayload = events
+	}
+	b.mu.Unlock()
+
+	b.callCh <- callAttempt{call: call, when: time.Now()}
+
+	if call == 1 {
+		return ErrRateExceeded
+	}
+	return nil
+}
+
+func (b *rateLimitBackend) waitCall(timeout time.Duration) (callAttempt, bool) {
+	select {
+	case attempt := <-b.callCh:
+		return attempt, true
+	case <-time.After(timeout):
+		return callAttempt{}, false
+	}
+}
+
+func (b *rateLimitBackend) lastEventData() map[string]any {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.lastPayload) == 0 {
+		return nil
+	}
+	return b.lastPayload[0].data
 }
 
 var (
@@ -662,7 +720,7 @@ func TestEventThrottling(t *testing.T) {
 	Configure(Configuration{
 		EventsBatchSize:    2,
 		EventsMaxRetries:   2,
-		EventsThrottleWait: 50 * time.Millisecond,
+		EventsThrottleWait: 100 * time.Millisecond,
 	})
 
 	Event("1", map[string]any{"data": "1"})
@@ -674,16 +732,38 @@ func TestEventThrottling(t *testing.T) {
 	Event("3", map[string]any{"data": "3"})
 	Event("4", map[string]any{"data": "4"})
 
-	req2 := <-control
-	req2.Response <- 429
-
-	req3 := <-control
-	req3.Response <- 201
-
 	select {
 	case <-control:
-		t.Errorf("Expected no more batches, events 3 and 4 should have been dropped during throttling")
+		t.Errorf("Expected no more requests until throttle wait expires - worker should not hammer API")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	select {
+	case req2 := <-control:
+		req2.Response <- 201
+		events := parseEvents(string(req2.Body))
+		if len(events) != 2 {
+			t.Fatalf("Expected 2 events in retry after throttle. actual=%d", len(events))
+		}
+		if events[0]["data"] != "1" || events[1]["data"] != "2" {
+			t.Errorf("Expected first batch to retry after throttle. actual=%v", events)
+		}
+	case <-time.After(150 * time.Millisecond):
+		t.Fatalf("Expected retry after throttle wait expires")
+	}
+
+	select {
+	case req3 := <-control:
+		req3.Response <- 201
+		events := parseEvents(string(req3.Body))
+		if len(events) != 2 {
+			t.Fatalf("Expected 2 events queued during throttle. actual=%d", len(events))
+		}
+		if events[0]["data"] != "3" || events[1]["data"] != "4" {
+			t.Errorf("Expected events 3 and 4 to be queued (not dropped) during throttle. actual=%v", events)
+		}
 	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected events queued during throttle to be sent")
 	}
 }
 
@@ -833,6 +913,52 @@ func TestEventWithHandlerDropped(t *testing.T) {
 	case <-control:
 		t.Errorf("Expected no event to be sent when handler returns ErrEventDropped")
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEventRetriesAfterRateLimit(t *testing.T) {
+	const throttleWait = 40 * time.Millisecond
+
+	backend := newRateLimitBackend()
+	client := New(Configuration{
+		Backend:            backend,
+		EventsBatchSize:    1,
+		EventsTimeout:      5 * time.Millisecond,
+		EventsThrottleWait: throttleWait,
+	})
+	t.Cleanup(func() {
+		client.eventsWorker.Stop()
+	})
+
+	if err := client.Event("rate_limit_test", map[string]any{"value": "foo"}); err != nil {
+		t.Fatalf("Expected Event() to enqueue without error. actual=%v", err)
+	}
+
+	first, ok := backend.waitCall(time.Second)
+	if !ok {
+		t.Fatalf("Expected first backend call when event is flushed")
+	}
+	if first.call != 1 {
+		t.Fatalf("Expected first call number to be 1. actual=%d", first.call)
+	}
+
+	second, ok := backend.waitCall(time.Second)
+	if !ok {
+		t.Fatalf("Expected retry after throttle wait")
+	}
+	if second.call != 2 {
+		t.Fatalf("Expected second call number to be 2. actual=%d", second.call)
+	}
+	if delay := second.when.Sub(first.when); delay < throttleWait {
+		t.Fatalf("Expected retry after throttle wait. delay=%v wait=%v", delay, throttleWait)
+	}
+
+	data := backend.lastEventData()
+	if data == nil {
+		t.Fatalf("Expected backend to receive event data on retry")
+	}
+	if data["value"] != "foo" {
+		t.Fatalf("Expected original event payload on retry. actual=%v", data["value"])
 	}
 }
 

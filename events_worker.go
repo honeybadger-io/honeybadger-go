@@ -63,10 +63,6 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 }
 
 func (w *EventsWorker) Push(e *eventPayload) {
-	if w.throttling.Load() {
-		return
-	}
-
 	w.in <- e
 }
 
@@ -92,6 +88,10 @@ func (w *EventsWorker) AttemptSend() bool {
 	w.queue = newRingBuffer(w.batchSize + 1)
 
 	for len(w.batches) > 0 {
+		if w.throttling.Load() {
+			break
+		}
+
 		batch := w.batches[0]
 		if batch.attempts > w.maxRetries {
 			w.logger.Printf("events worker dropping batch after %d failed attempts\n", batch.attempts)
@@ -104,13 +104,17 @@ func (w *EventsWorker) AttemptSend() bool {
 
 		if err == ErrRateExceeded {
 			w.throttling.Store(true)
-			w.ticker.Reset(w.throttleWait)
+			go func() {
+				time.Sleep(w.throttleWait)
+				w.throttling.Store(false)
+				w.Flush()
+			}()
+			break
 		} else if err != nil {
 			batch.attempts++
 			w.logger.Printf("events worker send error: %v\n", err)
 			break
 		} else {
-			w.throttling.Store(false)
 			w.batches = w.batches[1:]
 			w.queueSize -= len(batch.events)
 		}
@@ -131,7 +135,7 @@ func (w *EventsWorker) run(ctx context.Context) {
 		}
 
 		hasPendingBatches := w.AttemptSend()
-		if hasPendingBatches {
+		if hasPendingBatches && !w.throttling.Load() {
 			w.ticker.Reset(w.timeout)
 		}
 	}
