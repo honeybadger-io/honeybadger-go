@@ -54,8 +54,14 @@ func TestClientConcurrentContext(t *testing.T) {
 
 	wg.Add(2)
 
-	go updateContext(&wg, client, newContext)
-	go updateContext(&wg, client, newContext)
+	go func() {
+		client.SetContext(newContext)
+		wg.Done()
+	}()
+	go func() {
+		client.SetContext(newContext)
+		wg.Done()
+	}()
 
 	wg.Wait()
 
@@ -66,9 +72,74 @@ func TestClientConcurrentContext(t *testing.T) {
 	}
 }
 
-func updateContext(wg *sync.WaitGroup, client *Client, context Context) {
-	client.SetContext(context)
-	wg.Done()
+func TestClientEventContext(t *testing.T) {
+	client := New(Configuration{})
+
+	client.SetEventContext(Context{"foo": "bar"})
+	client.SetEventContext(Context{"bar": "baz"})
+
+	context := client.eventContext.internal
+
+	if context["foo"] != "bar" {
+		t.Errorf("Expected client to merge event context. expected=%#v actual=%#v", "bar", context["foo"])
+	}
+
+	if context["bar"] != "baz" {
+		t.Errorf("Expected client to merge event context. expected=%#v actual=%#v", "baz", context["bar"])
+	}
+}
+
+func TestClientConcurrentEventContext(t *testing.T) {
+	var wg sync.WaitGroup
+
+	client := New(Configuration{})
+	newContext := Context{"foo": "bar"}
+
+	wg.Add(2)
+
+	go func() {
+		client.SetEventContext(newContext)
+		wg.Done()
+	}()
+	go func() {
+		client.SetEventContext(newContext)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	context := client.eventContext.internal
+
+	if context["foo"] != "bar" {
+		t.Errorf("Expected context value. expected=%#v result=%#v", "bar", context["foo"])
+	}
+}
+
+func TestEventMergesContext(t *testing.T) {
+	backend := &TestBackend{}
+	client := New(Configuration{Backend: backend, Sync: true})
+
+	client.SetEventContext(Context{"user_id": 123, "session": "abc"})
+
+	err := client.Event("test_event", map[string]any{"message": "test"})
+	if err != nil {
+		t.Errorf("Expected Event to succeed. error=%v", err)
+	}
+
+	if len(backend.Events) != 1 {
+		t.Fatalf("Expected 1 event. actual=%d", len(backend.Events))
+	}
+
+	event := backend.Events[0]
+	if event.Data["user_id"] != 123 {
+		t.Errorf("Expected user_id from context. actual=%v", event.Data["user_id"])
+	}
+	if event.Data["session"] != "abc" {
+		t.Errorf("Expected session from context. actual=%v", event.Data["session"])
+	}
+	if event.Data["message"] != "test" {
+		t.Errorf("Expected message from event data. actual=%v", event.Data["message"])
+	}
 }
 
 func TestNotifyPushesTheEnvelope(t *testing.T) {

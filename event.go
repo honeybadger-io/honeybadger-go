@@ -14,8 +14,9 @@ func (e *eventPayload) toJSON() []byte {
 	return h.toJSON()
 }
 
-func newEventPayload(eventType string, eventData map[string]any) *eventPayload {
-	data := make(map[string]any)
+func newEventPayload(eventType string, eventContext, eventData map[string]any) *eventPayload {
+	data := make(map[string]any, len(eventContext)+len(eventData))
+	maps.Copy(data, eventContext)
 	maps.Copy(data, eventData)
 
 	data["event_type"] = eventType

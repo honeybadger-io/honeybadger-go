@@ -62,6 +62,10 @@ func SetContext(c Context) {
 	DefaultClient.SetContext(c)
 }
 
+func SetEventContext(c Context) {
+	DefaultClient.SetEventContext(c)
+}
+
 // Notify reports the error err to the Honeybadger service.
 //
 // The first argument err may be an error, a string, or any other type in which
@@ -73,17 +77,19 @@ func Notify(err interface{}, extra ...interface{}) (string, error) {
 	return DefaultClient.Notify(newError(err, 2), extra...)
 }
 
-func Event(eventType string, eventData map[string]interface{}) error {
+func Event(eventType string, eventData map[string]any) error {
 	return DefaultClient.Event(eventType, eventData)
 }
 
 // Monitor is used to automatically notify Honeybadger service of panics which
 // happen inside the current function. In order to monitor for panics, defer a
 // call to Monitor. For example:
-// 	func main {
-// 		defer honeybadger.Monitor()
-// 		// Do risky stuff...
-// 	}
+//
+//	func main {
+//		defer honeybadger.Monitor()
+//		// Do risky stuff...
+//	}
+//
 // The Monitor function re-panics after the notification has been sent, so it's
 // still up to the user to recover from panics if desired.
 func Monitor() {

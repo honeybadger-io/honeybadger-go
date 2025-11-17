@@ -28,6 +28,7 @@ type eventHandler func(map[string]any) error
 type Client struct {
 	Config               *Configuration
 	context              *contextSync
+	eventContext         *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
 	eventsWorker         *EventsWorker
@@ -51,6 +52,11 @@ func (client *Client) Configure(config Configuration) {
 // SetContext updates the client context with supplied context.
 func (client *Client) SetContext(context Context) {
 	client.context.Update(context)
+}
+
+// SetEventContext updates the client event context with supplied context.
+func (client *Client) SetEventContext(context Context) {
+	client.eventContext.Update(context)
 }
 
 // Flush blocks until the worker has processed its queue.
@@ -99,8 +105,10 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 	return notice.Token, nil
 }
 
-func (client *Client) Event(eventType string, eventData map[string]interface{}) error {
-	event := newEventPayload(eventType, eventData)
+func (client *Client) Event(eventType string, eventData map[string]any) error {
+	client.eventContext.RLock()
+	event := newEventPayload(eventType, client.eventContext.internal, eventData)
+	client.eventContext.RUnlock()
 
 	for _, handler := range client.beforeEventHandlers {
 		err := handler(event.data)
@@ -158,6 +166,7 @@ func New(c Configuration) *Client {
 		Config:       config,
 		worker:       worker,
 		context:      newContextSync(),
+		eventContext: newContextSync(),
 		eventsWorker: eventsWorker,
 	}
 

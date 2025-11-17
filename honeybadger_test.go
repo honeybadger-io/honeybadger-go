@@ -120,6 +120,8 @@ func teardown() {
 	*DefaultClient.Config = defaultConfig
 	DefaultClient.beforeNotifyHandlers = nil
 	DefaultClient.beforeEventHandlers = nil
+	DefaultClient.context = newContextSync()
+	DefaultClient.eventContext = newContextSync()
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -831,6 +833,70 @@ func TestEventWithHandlerDropped(t *testing.T) {
 	case <-control:
 		t.Errorf("Expected no event to be sent when handler returns ErrEventDropped")
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEventWithContext(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	eventContext := Context{"user_id": 456, "request_id": "abc123"}
+	SetEventContext(eventContext)
+
+	eventData := map[string]any{
+		"message": "test message",
+	}
+
+	err := Event("test_event", eventData)
+	if err != nil {
+		t.Errorf("Expected Event() to return no error. actual=%#v", err)
+	}
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	var event map[string]any
+	json.Unmarshal([]byte(lines[0]), &event)
+
+	if event["user_id"] != float64(456) {
+		t.Errorf("Expected user_id from context. actual=%#v", event["user_id"])
+	}
+	if event["request_id"] != "abc123" {
+		t.Errorf("Expected request_id from context. actual=%#v", event["request_id"])
+	}
+	if event["message"] != "test message" {
+		t.Errorf("Expected message from event data. actual=%#v", event["message"])
+	}
+}
+
+func TestEventDataOverridesContext(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	eventContext := Context{"user_id": 456}
+	SetEventContext(eventContext)
+
+	eventData := map[string]any{
+		"user_id": 789,
+		"message": "override test",
+	}
+
+	Event("test_event", eventData)
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	var event map[string]any
+	json.Unmarshal([]byte(lines[0]), &event)
+
+	if event["user_id"] != float64(789) {
+		t.Errorf("Expected user_id from event data to override context. expected=789 actual=%#v", event["user_id"])
 	}
 }
 
