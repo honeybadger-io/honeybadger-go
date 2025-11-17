@@ -67,7 +67,12 @@ func (w *Writer) WriteLevel(level zerolog.Level, p []byte) (int, error) {
 		}
 	}
 
-	_ = w.c.Event(eventType, m)
+	if err := w.c.Event(eventType, m); err != nil {
+		if w.c != nil && w.c.Config != nil && w.c.Config.Logger != nil {
+			w.c.Config.Logger.Printf("zerolog writer failed to send event: %v\n", err)
+		}
+		return len(p), err
+	}
 	return len(p), nil
 }
 

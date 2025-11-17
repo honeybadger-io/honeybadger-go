@@ -103,10 +103,12 @@ func (w *EventsWorker) AttemptSend() bool {
 		err := w.backend.Event(batch.events)
 
 		if err == ErrRateExceeded {
+			w.logger.Printf("events worker received rate limit; throttling for %v\n", w.throttleWait)
 			w.throttling.Store(true)
 			go func() {
 				time.Sleep(w.throttleWait)
 				w.throttling.Store(false)
+				w.logger.Printf("events worker throttle window expired; resuming sends\n")
 				w.Flush()
 			}()
 			break
@@ -162,6 +164,7 @@ func (w *EventsWorker) run(ctx context.Context) {
 			if w.queueSize >= w.maxQueueSize {
 				// Drop oldest if at capacity
 				if w.queue.len() > 0 {
+					w.logger.Printf("events worker queue full (%d); dropping oldest event\n", w.maxQueueSize)
 					w.queue.pop()
 				}
 			} else {
