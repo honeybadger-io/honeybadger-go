@@ -142,6 +142,34 @@ func TestEventMergesContext(t *testing.T) {
 	}
 }
 
+func TestConfigureDoesNotRestartWorkerForNonEventChanges(t *testing.T) {
+	client := New(Configuration{})
+	originalWorker := client.eventsWorker
+
+	client.Configure(Configuration{APIKey: "new-key"})
+
+	if client.eventsWorker != originalWorker {
+		t.Errorf("Expected worker to not restart when only APIKey changed")
+	}
+
+	client.Configure(Configuration{Hostname: "new-host"})
+
+	if client.eventsWorker != originalWorker {
+		t.Errorf("Expected worker to not restart when only Hostname changed")
+	}
+}
+
+func TestConfigureRestartsWorkerForEventChanges(t *testing.T) {
+	client := New(Configuration{})
+	originalWorker := client.eventsWorker
+
+	client.Configure(Configuration{EventsBatchSize: 500})
+
+	if client.eventsWorker == originalWorker {
+		t.Errorf("Expected worker to restart when EventsBatchSize changed")
+	}
+}
+
 func TestNotifyPushesTheEnvelope(t *testing.T) {
 	client, worker, _ := mockClient(Configuration{})
 
