@@ -53,7 +53,7 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 		queue:      newRingBuffer(cfg.EventsBatchSize + 1),
 		queueSize:  0,
 		batches:    make([]*Batch, 0),
-		in:         make(chan *eventPayload),
+		in:         make(chan *eventPayload, cfg.EventsMaxQueueSize),
 		flushCh:    make(chan struct{}, 1),
 		shutdownCh: make(chan struct{}),
 	}

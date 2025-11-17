@@ -1026,6 +1026,62 @@ func TestEventDataOverridesContext(t *testing.T) {
 	}
 }
 
+func TestEventDoesNotBlockDuringBatchSend(t *testing.T) {
+	sendDuration := 100 * time.Millisecond
+
+	backend := &slowBackend{
+		delay: sendDuration,
+		done:  make(chan struct{}),
+	}
+
+	Configure(Configuration{
+		Backend:             backend,
+		EventsBatchSize:     2,
+		EventsMaxQueueSize:  10,
+		EventsTimeout:       time.Second,
+	})
+	defer teardown()
+
+	Event("event1", map[string]any{"data": 1})
+	Event("event2", map[string]any{"data": 2})
+
+	<-backend.done
+
+	start := time.Now()
+	Event("event3", map[string]any{"data": 3})
+	elapsed := time.Since(start)
+
+	maxAcceptable := 10 * time.Millisecond
+	if elapsed > maxAcceptable {
+		t.Errorf("Event() blocked for %v while batch was being sent (backend delay: %v). Expected non-blocking behavior (< %v)", elapsed, sendDuration, maxAcceptable)
+	}
+}
+
+type slowBackend struct {
+	delay time.Duration
+	done  chan struct{}
+	mu    sync.Mutex
+	calls int
+}
+
+func (b *slowBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *slowBackend) Event(events []*eventPayload) error {
+	b.mu.Lock()
+	b.calls++
+	firstCall := b.calls == 1
+	b.mu.Unlock()
+
+	if firstCall {
+		b.done <- struct{}{}
+	}
+
+	time.Sleep(b.delay)
+	return nil
+}
+
 func TestHandlerCallsHandler(t *testing.T) {
 	mockHandler := &MockedHandler{}
 	mockHandler.On("ServeHTTP").Return()
