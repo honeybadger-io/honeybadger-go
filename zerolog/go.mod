@@ -3,7 +3,7 @@ module github.com/honeybadger-io/honeybadger-go/zerolog
 go 1.24.0
 
 require (
-	github.com/honeybadger-io/honeybadger-go v0.0.0
+	github.com/honeybadger-io/honeybadger-go v0.8.1-0.20251117195949-88d06c1beac2
 	github.com/rs/zerolog v1.33.0
 )
 
@@ -17,5 +17,3 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 )
-
-replace github.com/honeybadger-io/honeybadger-go => ../
