@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1080,6 +1081,72 @@ func (b *slowBackend) Event(events []*eventPayload) error {
 
 	time.Sleep(b.delay)
 	return nil
+}
+
+func TestEventDropLogging(t *testing.T) {
+	var logBuf strings.Builder
+	logger := log.New(&logBuf, "", 0)
+
+	backend := &TestBackend{}
+	Configure(Configuration{
+		Backend:               backend,
+		Logger:                logger,
+		EventsBatchSize:       10,
+		EventsMaxQueueSize:    5,
+		EventsDropLogInterval: 100 * time.Millisecond,
+		EventsTimeout:         time.Second,
+	})
+	defer teardown()
+
+	for i := 0; i < 20; i++ {
+		Event(fmt.Sprintf("event%d", i), map[string]any{"index": i})
+	}
+
+	time.Sleep(150 * time.Millisecond)
+
+	logs := logBuf.String()
+	dropLogCount := strings.Count(logs, "dropped")
+
+	if dropLogCount == 0 {
+		t.Errorf("Expected at least one drop log message, got none")
+	}
+
+	if dropLogCount > 2 {
+		t.Errorf("Expected consolidated drop logging (1-2 messages), got %d messages:\n%s", dropLogCount, logs)
+	}
+
+	if !strings.Contains(logs, "events worker dropped") {
+		t.Errorf("Expected consolidated drop message format. Got:\n%s", logs)
+	}
+}
+
+func TestEventDropLoggingDisabled(t *testing.T) {
+	var logBuf strings.Builder
+	logger := log.New(&logBuf, "", 0)
+
+	backend := &TestBackend{}
+	Configure(Configuration{
+		Backend:               backend,
+		Logger:                logger,
+		EventsBatchSize:       10,
+		EventsMaxQueueSize:    5,
+		EventsDropLogInterval: 0,
+		EventsTimeout:         time.Second,
+	})
+	defer teardown()
+
+	for i := 0; i < 20; i++ {
+		Event(fmt.Sprintf("event%d", i), map[string]any{"index": i})
+	}
+
+	time.Sleep(150 * time.Millisecond)
+
+	logs := logBuf.String()
+	dropLogCount := strings.Count(logs, "dropped")
+
+	if dropLogCount > 0 {
+		t.Errorf("Expected no drop logging when interval is 0, got %d messages:\n%s", dropLogCount, logs)
+	}
 }
 
 func TestHandlerCallsHandler(t *testing.T) {

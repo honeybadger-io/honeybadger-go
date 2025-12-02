@@ -26,11 +26,12 @@ type Configuration struct {
 	Logger             Logger
 	Backend            Backend
 	Context            context.Context
-	EventsBatchSize    int
-	EventsThrottleWait time.Duration
-	EventsTimeout      time.Duration
-	EventsMaxQueueSize int
-	EventsMaxRetries   int
+	EventsBatchSize      int
+	EventsThrottleWait   time.Duration
+	EventsTimeout        time.Duration
+	EventsMaxQueueSize   int
+	EventsMaxRetries     int
+	EventsDropLogInterval time.Duration
 }
 
 func (c1 *Configuration) update(c2 *Configuration) *Configuration {
@@ -76,6 +77,9 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.EventsThrottleWait > 0 {
 		c1.EventsThrottleWait = c2.EventsThrottleWait
 	}
+	if c2.EventsDropLogInterval > 0 {
+		c1.EventsDropLogInterval = c2.EventsDropLogInterval
+	}
 
 	c1.Sync = c2.Sync
 	return c1
@@ -102,11 +106,12 @@ func newConfig(c Configuration) *Configuration {
 		Logger:             log.New(os.Stderr, "[honeybadger] ", log.Flags()),
 		Sync:               GetEnv[bool]("HONEYBADGER_SYNC", false),
 		Context:            context.Background(),
-		EventsThrottleWait: GetEnv[time.Duration]("HONEYBADGER_EVENTS_THROTTLE_WAIT", 60*time.Second),
-		EventsBatchSize:    GetEnv[int]("HONEYBADGER_EVENTS_BATCH_SIZE", 1000),
-		EventsTimeout:      GetEnv[time.Duration]("HONEYBADGER_EVENTS_TIMEOUT", 30*time.Second),
-		EventsMaxQueueSize: GetEnv[int]("HONEYBADGER_EVENTS_MAX_QUEUE_SIZE", 100000),
-		EventsMaxRetries:   GetEnv[int]("HONEYBADGER_EVENTS_MAX_RETRIES", 3),
+		EventsThrottleWait:    GetEnv[time.Duration]("HONEYBADGER_EVENTS_THROTTLE_WAIT", 60*time.Second),
+		EventsBatchSize:       GetEnv[int]("HONEYBADGER_EVENTS_BATCH_SIZE", 1000),
+		EventsTimeout:         GetEnv[time.Duration]("HONEYBADGER_EVENTS_TIMEOUT", 30*time.Second),
+		EventsMaxQueueSize:    GetEnv[int]("HONEYBADGER_EVENTS_MAX_QUEUE_SIZE", 100000),
+		EventsMaxRetries:      GetEnv[int]("HONEYBADGER_EVENTS_MAX_RETRIES", 3),
+		EventsDropLogInterval: GetEnv[time.Duration]("HONEYBADGER_EVENTS_DROP_LOG_INTERVAL", 60*time.Second),
 	}
 	config.update(&c)
 

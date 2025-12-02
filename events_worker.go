@@ -13,19 +13,23 @@ type Batch struct {
 }
 
 type EventsWorker struct {
-	backend      Backend
-	batchSize    int
-	throttleWait time.Duration
-	timeout      time.Duration
-	maxQueueSize int
-	maxRetries   int
-	logger       Logger
+	backend         Backend
+	batchSize       int
+	throttleWait    time.Duration
+	timeout         time.Duration
+	maxQueueSize    int
+	maxRetries      int
+	dropLogInterval time.Duration
+	logger          Logger
 
-	ticker     *time.Ticker
-	queue      *ringBuffer
-	queueSize  int
-	batches    []*Batch
-	throttling atomic.Bool
+	ticker      *time.Ticker
+	dropTicker  *time.Ticker
+	queue       *ringBuffer
+	queueSize   int
+	batches     []*Batch
+	throttling  atomic.Bool
+	dropped     int64
+	lastDropLog time.Time
 
 	in         chan *eventPayload
 	flushCh    chan struct{}
@@ -42,13 +46,14 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 	}
 
 	w := &EventsWorker{
-		backend:      cfg.Backend,
-		batchSize:    cfg.EventsBatchSize,
-		timeout:      cfg.EventsTimeout,
-		maxQueueSize: cfg.EventsMaxQueueSize,
-		maxRetries:   cfg.EventsMaxRetries,
-		throttleWait: cfg.EventsThrottleWait,
-		logger:       cfg.Logger,
+		backend:         cfg.Backend,
+		batchSize:       cfg.EventsBatchSize,
+		timeout:         cfg.EventsTimeout,
+		maxQueueSize:    cfg.EventsMaxQueueSize,
+		maxRetries:      cfg.EventsMaxRetries,
+		throttleWait:    cfg.EventsThrottleWait,
+		dropLogInterval: cfg.EventsDropLogInterval,
+		logger:          cfg.Logger,
 		// +1 so we can push before checking flush threshold without dropping an event.
 		queue:      newRingBuffer(cfg.EventsBatchSize + 1),
 		queueSize:  0,
@@ -78,6 +83,14 @@ func (w *EventsWorker) Stop() {
 		close(w.shutdownCh)
 		w.wg.Wait()
 	})
+}
+
+func (w *EventsWorker) logDropSummary() {
+	if w.dropped > 0 {
+		w.logger.Printf("events worker dropped %d events due to full queue (capacity: %d, current size: %d)\n", w.dropped, w.maxQueueSize, w.queueSize)
+		w.dropped = 0
+		w.lastDropLog = time.Now()
+	}
 }
 
 func (w *EventsWorker) AttemptSend() bool {
@@ -131,6 +144,13 @@ func (w *EventsWorker) run(ctx context.Context) {
 	w.ticker = time.NewTicker(w.timeout)
 	defer w.ticker.Stop()
 
+	var dropTickerCh <-chan time.Time
+	if w.dropLogInterval > 0 {
+		w.dropTicker = time.NewTicker(w.dropLogInterval)
+		defer w.dropTicker.Stop()
+		dropTickerCh = w.dropTicker.C
+	}
+
 	flush := func() {
 		if w.queue.len() == 0 && len(w.batches) == 0 {
 			return
@@ -146,14 +166,19 @@ func (w *EventsWorker) run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			flush()
+			w.logDropSummary()
 			return
 
 		case <-w.shutdownCh:
 			flush()
+			w.logDropSummary()
 			return
 
 		case <-w.ticker.C:
 			flush()
+
+		case <-dropTickerCh:
+			w.logDropSummary()
 
 		case <-w.flushCh:
 			flush()
@@ -164,8 +189,8 @@ func (w *EventsWorker) run(ctx context.Context) {
 			if w.queueSize >= w.maxQueueSize {
 				// Drop oldest if at capacity
 				if w.queue.len() > 0 {
-					w.logger.Printf("events worker queue full (%d); dropping oldest event\n", w.maxQueueSize)
 					w.queue.pop()
+					w.dropped++
 				}
 			} else {
 				w.queueSize++
