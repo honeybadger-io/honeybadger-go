@@ -523,8 +523,12 @@ func TestEvent(t *testing.T) {
 	if message, ok := event["message"].(string); !ok || message != "test message" {
 		t.Errorf("Expected message 'test message'. actual=%#v", event["message"])
 	}
-	if _, ok := event["ts"].(string); !ok {
+	ts, ok := event["ts"].(string)
+	if !ok {
 		t.Errorf("Expected ts field to be present. actual=%#v", event)
+	}
+	if _, err := time.Parse(time.RFC3339Nano, ts); err != nil {
+		t.Errorf("Expected ts to be in RFC3339Nano format. actual=%q", ts)
 	}
 }
 

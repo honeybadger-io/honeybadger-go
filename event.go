@@ -21,7 +21,7 @@ func newEventPayload(eventType string, eventContext, eventData map[string]any) *
 
 	data["event_type"] = eventType
 	if _, ok := data["ts"]; !ok {
-		data["ts"] = time.Now().UTC().Format(time.RFC3339)
+		data["ts"] = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 
 	return &eventPayload{data: data}
