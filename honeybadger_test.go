@@ -1089,7 +1089,8 @@ func (b *slowBackend) Event(events []*eventPayload) error {
 
 func TestEventDropLogging(t *testing.T) {
 	var logBuf strings.Builder
-	logger := log.New(&logBuf, "", 0)
+	var logMu sync.Mutex
+	logger := log.New(&threadSafeWriter{w: &logBuf, mu: &logMu}, "", 0)
 
 	backend := &TestBackend{}
 	Configure(Configuration{
@@ -1108,7 +1109,10 @@ func TestEventDropLogging(t *testing.T) {
 
 	time.Sleep(150 * time.Millisecond)
 
+	logMu.Lock()
 	logs := logBuf.String()
+	logMu.Unlock()
+
 	dropLogCount := strings.Count(logs, "dropped")
 
 	if dropLogCount == 0 {
@@ -1124,9 +1128,21 @@ func TestEventDropLogging(t *testing.T) {
 	}
 }
 
+type threadSafeWriter struct {
+	w  *strings.Builder
+	mu *sync.Mutex
+}
+
+func (w *threadSafeWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Write(p)
+}
+
 func TestEventDropLoggingDisabled(t *testing.T) {
 	var logBuf strings.Builder
-	logger := log.New(&logBuf, "", 0)
+	var logMu sync.Mutex
+	logger := log.New(&threadSafeWriter{w: &logBuf, mu: &logMu}, "", 0)
 
 	backend := &TestBackend{}
 	Configure(Configuration{
@@ -1145,7 +1161,10 @@ func TestEventDropLoggingDisabled(t *testing.T) {
 
 	time.Sleep(150 * time.Millisecond)
 
+	logMu.Lock()
 	logs := logBuf.String()
+	logMu.Unlock()
+
 	dropLogCount := strings.Count(logs, "dropped")
 
 	if dropLogCount > 0 {
