@@ -123,6 +123,7 @@ The following options are available to you:
 | EventsMaxQueueSize | `int` | 100000 | `50000` | `HONEYBADGER_EVENTS_MAX_QUEUE_SIZE` |
 | EventsMaxRetries | `int` | 3 | `5` | `HONEYBADGER_EVENTS_MAX_RETRIES` |
 | EventsThrottleWait | `time.Duration` | 60 seconds | `30 * time.Second` | `HONEYBADGER_EVENTS_THROTTLE_WAIT` (nanoseconds)|
+| EventsDropLogInterval | `time.Duration` | 60 seconds | `30 * time.Second` | `HONEYBADGER_EVENTS_DROP_LOG_INTERVAL` (nanoseconds)|
 
 ## Public Interface
 

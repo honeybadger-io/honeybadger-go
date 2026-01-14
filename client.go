@@ -36,7 +36,7 @@ type Client struct {
 }
 
 func eventsConfigChanged(config *Configuration) bool {
-	return config.EventsBatchSize > 0 || config.EventsTimeout > 0 || config.EventsMaxQueueSize > 0 || config.EventsMaxRetries > 0 || config.EventsThrottleWait > 0 || config.EventsDropLogInterval > 0 || config.Backend != nil || config.Context != nil
+	return config.EventsBatchSize > 0 || config.EventsTimeout > 0 || config.EventsMaxQueueSize > 0 || config.EventsMaxRetries > 0 || config.EventsThrottleWait > 0 || config.EventsDropLogInterval > 0 || config.Backend != nil
 }
 
 // Configure updates the client configuration with the supplied config.
@@ -72,7 +72,9 @@ func (client *Client) ClearEventContext() {
 // Flush blocks until the worker has processed its queue.
 func (client *Client) Flush() {
 	client.worker.Flush()
-	client.eventsWorker.Flush()
+	if client.eventsWorker != nil {
+		client.eventsWorker.Flush()
+	}
 }
 
 // BeforeNotify adds a callback function which is run before a notice is

@@ -77,9 +77,7 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.EventsThrottleWait > 0 {
 		c1.EventsThrottleWait = c2.EventsThrottleWait
 	}
-	if c2.EventsDropLogInterval > 0 {
-		c1.EventsDropLogInterval = c2.EventsDropLogInterval
-	}
+	c1.EventsDropLogInterval = c2.EventsDropLogInterval
 
 	c1.Sync = c2.Sync
 	return c1
@@ -147,7 +145,9 @@ func GetEnv[T any](key string, fallback ...any) T {
 			return any(v).(T)
 		}
 	case bool:
-		return any(true).(T)
+		if v, err := strconv.ParseBool(val); err == nil {
+			return any(v).(T)
+		}
 	case time.Duration:
 		if v, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return any(time.Duration(v)).(T)
