@@ -77,7 +77,9 @@ func (c1 *Configuration) update(c2 *Configuration) *Configuration {
 	if c2.EventsThrottleWait > 0 {
 		c1.EventsThrottleWait = c2.EventsThrottleWait
 	}
-	c1.EventsDropLogInterval = c2.EventsDropLogInterval
+	if c2.EventsDropLogInterval > 0 {
+		c1.EventsDropLogInterval = c2.EventsDropLogInterval
+	}
 
 	c1.Sync = c2.Sync
 	return c1
