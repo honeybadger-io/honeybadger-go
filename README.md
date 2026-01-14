@@ -187,6 +187,18 @@ honeybadger.SetContext(honeybadger.Context{
 
 ---
 
+### `honeybadger.ClearContext()`: Clear all context data
+
+This method clears all context data that was previously set with `SetContext`.
+
+#### Examples:
+
+```go
+honeybadger.ClearContext()
+```
+
+---
+
 ### ``defer honeybadger.Monitor()``: Automatically report panics from your functions
 
 To automatically report panics in your functions or methods, add
@@ -286,6 +298,33 @@ honeybadger.BeforeEvent(
     return nil
   }
 )
+```
+
+---
+
+### `honeybadger.SetEventContext()`: Set context data to be included with all events
+
+This method lets you set context data that will be merged into all events sent via `honeybadger.Event()`. Event data passed directly to `Event()` takes precedence over event context.
+
+#### Examples:
+
+```go
+honeybadger.SetEventContext(honeybadger.Context{
+  "user_id": 123,
+  "account": "acme",
+})
+```
+
+---
+
+### `honeybadger.ClearEventContext()`: Clear all event context data
+
+This method clears all event context data that was previously set with `SetEventContext`.
+
+#### Examples:
+
+```go
+honeybadger.ClearEventContext()
 ```
 
 ---

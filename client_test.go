@@ -89,6 +89,42 @@ func TestClientEventContext(t *testing.T) {
 	}
 }
 
+func TestClientClearContext(t *testing.T) {
+	client := New(Configuration{})
+
+	client.SetContext(Context{"foo": "bar", "baz": "qux"})
+
+	context := client.context.internal
+	if len(context) != 2 {
+		t.Errorf("Expected 2 context keys before clear, got %d", len(context))
+	}
+
+	client.ClearContext()
+
+	context = client.context.internal
+	if len(context) != 0 {
+		t.Errorf("Expected empty context after clear, got %d keys: %v", len(context), context)
+	}
+}
+
+func TestClientClearEventContext(t *testing.T) {
+	client := New(Configuration{})
+
+	client.SetEventContext(Context{"user_id": 123, "session": "abc"})
+
+	context := client.eventContext.internal
+	if len(context) != 2 {
+		t.Errorf("Expected 2 event context keys before clear, got %d", len(context))
+	}
+
+	client.ClearEventContext()
+
+	context = client.eventContext.internal
+	if len(context) != 0 {
+		t.Errorf("Expected empty event context after clear, got %d keys: %v", len(context), context)
+	}
+}
+
 func TestClientConcurrentEventContext(t *testing.T) {
 	var wg sync.WaitGroup
 

@@ -54,9 +54,19 @@ func (client *Client) SetContext(context Context) {
 	client.context.Update(context)
 }
 
+// ClearContext clears all context data.
+func (client *Client) ClearContext() {
+	client.context.Clear()
+}
+
 // SetEventContext updates the client event context with supplied context.
 func (client *Client) SetEventContext(context Context) {
 	client.eventContext.Update(context)
+}
+
+// ClearEventContext clears all event context data.
+func (client *Client) ClearEventContext() {
+	client.eventContext.Clear()
 }
 
 // Flush blocks until the worker has processed its queue.

@@ -62,8 +62,18 @@ func SetContext(c Context) {
 	DefaultClient.SetContext(c)
 }
 
+// ClearContext clears all context data from the global client.
+func ClearContext() {
+	DefaultClient.ClearContext()
+}
+
 func SetEventContext(c Context) {
 	DefaultClient.SetEventContext(c)
+}
+
+// ClearEventContext clears all event context data from the global client.
+func ClearEventContext() {
+	DefaultClient.ClearEventContext()
 }
 
 // Notify reports the error err to the Honeybadger service.
