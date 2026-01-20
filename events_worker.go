@@ -32,7 +32,7 @@ type EventsWorker struct {
 	lastDropLog time.Time
 
 	in         chan *eventPayload
-	flushCh    chan struct{}
+	flushCh    chan chan struct{}
 	shutdownCh chan struct{}
 
 	wg   sync.WaitGroup
@@ -59,7 +59,7 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 		queueSize:  0,
 		batches:    make([]*Batch, 0),
 		in:         make(chan *eventPayload, cfg.EventsMaxQueueSize),
-		flushCh:    make(chan struct{}, 1),
+		flushCh:    make(chan chan struct{}, 1),
 		shutdownCh: make(chan struct{}),
 	}
 	w.wg.Add(1)
@@ -72,9 +72,18 @@ func (w *EventsWorker) Push(e *eventPayload) {
 }
 
 func (w *EventsWorker) Flush() {
+	// Check if already stopped
 	select {
-	case w.flushCh <- struct{}{}:
+	case <-w.shutdownCh:
+		return
 	default:
+	}
+
+	done := make(chan struct{})
+	select {
+	case w.flushCh <- done:
+		<-done
+	case <-w.shutdownCh:
 	}
 }
 
@@ -180,8 +189,9 @@ func (w *EventsWorker) run(ctx context.Context) {
 		case <-dropTickerCh:
 			w.logDropSummary()
 
-		case <-w.flushCh:
+		case done := <-w.flushCh:
 			flush()
+			close(done)
 
 		case e := <-w.in:
 			w.queue.push(e)

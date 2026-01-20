@@ -631,25 +631,30 @@ func TestEventMaxQueueSize(t *testing.T) {
 	Event("middle_event", map[string]any{"data": "middle"})
 	Event("new_event", map[string]any{"data": "newest"})
 
+	var events []map[string]any
+	done := make(chan struct{})
+	go func() {
+		select {
+		case req := <-control:
+			req.Response <- 201
+			events = parseEvents(string(req.Body))
+		case <-time.After(100 * time.Millisecond):
+		}
+		close(done)
+	}()
+
 	DefaultClient.eventsWorker.Flush()
+	<-done
 
-	select {
-	case req := <-control:
-		req.Response <- 201
-		events := parseEvents(string(req.Body))
+	if len(events) != 2 {
+		t.Fatalf("Expected 2 events. actual=%d", len(events))
+	}
 
-		if len(events) != 2 {
-			t.Fatalf("Expected 2 events. actual=%d", len(events))
+	expectedData := []string{"middle", "newest"}
+	for i, expected := range expectedData {
+		if events[i]["data"] != expected {
+			t.Errorf("Expected event %d data '%s'. actual=%v", i, expected, events[i]["data"])
 		}
-
-		expectedData := []string{"middle", "newest"}
-		for i, expected := range expectedData {
-			if events[i]["data"] != expected {
-				t.Errorf("Expected event %d data '%s'. actual=%v", i, expected, events[i]["data"])
-			}
-		}
-	case <-time.After(100 * time.Millisecond):
-		t.Fatalf("Expected 1 request")
 	}
 }
 
@@ -701,13 +706,20 @@ func TestEventQueueSizeIncludesPendingBatches(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
+	var events []map[string]any
+	done := make(chan struct{})
+	go func() {
+		req2 := <-control
+		req2.Response <- 201
+
+		req3 := <-control
+		events = parseEvents(string(req3.Body))
+		req3.Response <- 201
+		close(done)
+	}()
+
 	DefaultClient.eventsWorker.Flush()
-
-	req2 := <-control
-	req2.Response <- 201
-
-	req3 := <-control
-	events := parseEvents(string(req3.Body))
+	<-done
 
 	if len(events) != 1 {
 		t.Errorf("Expected 1 event after dropping. actual=%d", len(events))
@@ -715,7 +727,6 @@ func TestEventQueueSizeIncludesPendingBatches(t *testing.T) {
 	if events[0]["data"] != "4" {
 		t.Errorf("Expected newest event '4'. actual=%v", events[0]["data"])
 	}
-	req3.Response <- 201
 }
 
 func TestEventThrottling(t *testing.T) {
@@ -1170,6 +1181,55 @@ func TestEventDropLoggingDisabled(t *testing.T) {
 	if dropLogCount > 0 {
 		t.Errorf("Expected no drop logging when interval is 0, got %d messages:\n%s", dropLogCount, logs)
 	}
+}
+
+func TestEventFlushBlocksUntilDelivery(t *testing.T) {
+	backend := &trackingBackend{
+		delay: 50 * time.Millisecond,
+	}
+
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
+
+	config := newConfig(Configuration{
+		Backend:         backend,
+		EventsBatchSize: 1,
+		EventsTimeout:   time.Second,
+	})
+	*DefaultClient.Config = *config
+	DefaultClient.eventsWorker = NewEventsWorker(config)
+	defer teardown()
+
+	Event("test_event", map[string]any{"data": "value"})
+
+	Flush()
+
+	backend.mu.Lock()
+	delivered := backend.delivered
+	backend.mu.Unlock()
+
+	if !delivered {
+		t.Error("Expected Flush() to block until event was delivered, but it returned before delivery completed")
+	}
+}
+
+type trackingBackend struct {
+	delay     time.Duration
+	mu        sync.Mutex
+	delivered bool
+}
+
+func (b *trackingBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *trackingBackend) Event(events []*eventPayload) error {
+	time.Sleep(b.delay)
+	b.mu.Lock()
+	b.delivered = true
+	b.mu.Unlock()
+	return nil
 }
 
 func TestHandlerCallsHandler(t *testing.T) {
