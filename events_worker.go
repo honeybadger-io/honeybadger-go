@@ -27,8 +27,8 @@ type EventsWorker struct {
 	queue       *ringBuffer
 	queueSize   int
 	batches     []*Batch
-	throttling  atomic.Bool
-	dropped     int64
+	throttling atomic.Bool
+	dropped    atomic.Int64
 	lastDropLog time.Time
 
 	in         chan *eventPayload
@@ -68,7 +68,11 @@ func NewEventsWorker(cfg *Configuration) *EventsWorker {
 }
 
 func (w *EventsWorker) Push(e *eventPayload) {
-	w.in <- e
+	select {
+	case w.in <- e:
+	default:
+		w.dropped.Add(1)
+	}
 }
 
 func (w *EventsWorker) Flush() {
@@ -95,9 +99,9 @@ func (w *EventsWorker) Stop() {
 }
 
 func (w *EventsWorker) logDropSummary() {
-	if w.dropped > 0 {
-		w.logger.Printf("events worker dropped %d events due to full queue (capacity: %d, current size: %d)\n", w.dropped, w.maxQueueSize, w.queueSize)
-		w.dropped = 0
+	dropped := w.dropped.Swap(0)
+	if dropped > 0 {
+		w.logger.Printf("events worker dropped %d events due to full queue (capacity: %d, current size: %d)\n", dropped, w.maxQueueSize, w.queueSize)
 		w.lastDropLog = time.Now()
 	}
 }
@@ -190,6 +194,24 @@ func (w *EventsWorker) run(ctx context.Context) {
 			w.logDropSummary()
 
 		case done := <-w.flushCh:
+			// Drain pending events from input channel before flushing
+		drainLoop:
+			for {
+				select {
+				case e := <-w.in:
+					w.queue.push(e)
+					if w.queueSize >= w.maxQueueSize {
+						if w.queue.len() > 0 {
+							w.queue.pop()
+							w.dropped.Add(1)
+						}
+					} else {
+						w.queueSize++
+					}
+				default:
+					break drainLoop
+				}
+			}
 			flush()
 			close(done)
 
@@ -200,7 +222,7 @@ func (w *EventsWorker) run(ctx context.Context) {
 				// Drop oldest if at capacity
 				if w.queue.len() > 0 {
 					w.queue.pop()
-					w.dropped++
+					w.dropped.Add(1)
 				}
 			} else {
 				w.queueSize++

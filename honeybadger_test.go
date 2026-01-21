@@ -627,9 +627,9 @@ func TestEventMaxQueueSize(t *testing.T) {
 
 	Configure(Configuration{EventsBatchSize: 10, EventsMaxQueueSize: 2})
 
-	Event("old_event", map[string]any{"data": "should be dropped"})
-	Event("middle_event", map[string]any{"data": "middle"})
-	Event("new_event", map[string]any{"data": "newest"})
+	Event("first_event", map[string]any{"data": "first"})
+	Event("second_event", map[string]any{"data": "second"})
+	Event("third_event", map[string]any{"data": "dropped"})
 
 	var events []map[string]any
 	done := make(chan struct{})
@@ -650,7 +650,7 @@ func TestEventMaxQueueSize(t *testing.T) {
 		t.Fatalf("Expected 2 events. actual=%d", len(events))
 	}
 
-	expectedData := []string{"middle", "newest"}
+	expectedData := []string{"first", "second"}
 	for i, expected := range expectedData {
 		if events[i]["data"] != expected {
 			t.Errorf("Expected event %d data '%s'. actual=%v", i, expected, events[i]["data"])
@@ -1229,6 +1229,57 @@ func (b *trackingBackend) Event(events []*eventPayload) error {
 	b.mu.Lock()
 	b.delivered = true
 	b.mu.Unlock()
+	return nil
+}
+
+func TestEventDoesNotBlockWhenQueueFull(t *testing.T) {
+	backend := &blockingBackend{
+		unblock: make(chan struct{}),
+	}
+
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
+
+	config := newConfig(Configuration{
+		Backend:            backend,
+		EventsBatchSize:    1,
+		EventsMaxQueueSize: 2,
+		EventsTimeout:      time.Second,
+	})
+	*DefaultClient.Config = *config
+	DefaultClient.eventsWorker = NewEventsWorker(config)
+	defer teardown()
+
+	// Send events to fill the queue (batch size 1 triggers immediate send, which blocks)
+	Event("event1", map[string]any{"data": 1})
+	Event("event2", map[string]any{"data": 2})
+	Event("event3", map[string]any{"data": 3})
+
+	// This event should not block even though queue is full
+	start := time.Now()
+	Event("event4", map[string]any{"data": 4})
+	elapsed := time.Since(start)
+
+	// Unblock the backend so test can clean up
+	close(backend.unblock)
+
+	maxAcceptable := 10 * time.Millisecond
+	if elapsed > maxAcceptable {
+		t.Errorf("Event() blocked for %v when queue was full. Expected non-blocking behavior (< %v)", elapsed, maxAcceptable)
+	}
+}
+
+type blockingBackend struct {
+	unblock chan struct{}
+}
+
+func (b *blockingBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *blockingBackend) Event(events []*eventPayload) error {
+	<-b.unblock
 	return nil
 }
 
