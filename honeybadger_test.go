@@ -1,19 +1,86 @@
 package honeybadger
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/mock"
 )
+
+type eventReqResp struct {
+	Body     []byte
+	Response chan int
+}
+
+type callAttempt struct {
+	call int
+	when time.Time
+}
+
+type rateLimitBackend struct {
+	callCh      chan callAttempt
+	mu          sync.Mutex
+	calls       int
+	lastPayload []*eventPayload
+}
+
+func newRateLimitBackend() *rateLimitBackend {
+	return &rateLimitBackend{
+		callCh: make(chan callAttempt, 4),
+	}
+}
+
+func (b *rateLimitBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *rateLimitBackend) Event(events []*eventPayload) error {
+	b.mu.Lock()
+	b.calls++
+	call := b.calls
+	if call > 1 {
+		b.lastPayload = events
+	}
+	b.mu.Unlock()
+
+	b.callCh <- callAttempt{call: call, when: time.Now()}
+
+	if call == 1 {
+		return ErrRateExceeded
+	}
+	return nil
+}
+
+func (b *rateLimitBackend) waitCall(timeout time.Duration) (callAttempt, bool) {
+	select {
+	case attempt := <-b.callCh:
+		return attempt, true
+	case <-time.After(timeout):
+		return callAttempt{}, false
+	}
+}
+
+func (b *rateLimitBackend) lastEventData() map[string]any {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.lastPayload) == 0 {
+		return nil
+	}
+	return b.lastPayload[0].data
+}
 
 var (
 	mux           *http.ServeMux
@@ -45,8 +112,14 @@ func (h *HTTPRequest) decodeJSON() hash {
 }
 
 func newHTTPRequest(r *http.Request) *HTTPRequest {
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	return &HTTPRequest{r, body}
+}
+
+func assertMethod(t *testing.T, r *http.Request, method string) {
+	if r.Method != method {
+		t.Errorf("Unexpected request method. actual=%#v expected=%#v", r.Method, method)
+	}
 }
 
 func setup(t *testing.T) {
@@ -65,8 +138,49 @@ func setup(t *testing.T) {
 	*DefaultClient.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
 }
 
+func setupEvents(t *testing.T) chan eventReqResp {
+	mux = http.NewServeMux()
+	ts = httptest.NewServer(mux)
+	control := make(chan eventReqResp)
+
+	mux.HandleFunc("/v1/events", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, r, "POST")
+		body, _ := io.ReadAll(r.Body)
+		respCh := make(chan int)
+
+		select {
+		case control <- eventReqResp{Body: body, Response: respCh}:
+			status := <-respCh
+			w.WriteHeader(status)
+			if status == 201 {
+				fmt.Fprint(w, `{"id":"event-id"}`)
+			}
+		default:
+			w.WriteHeader(201)
+			fmt.Fprint(w, `{"id":"event-id"}`)
+		}
+	})
+
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
+
+	config := newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+	*DefaultClient.Config = *config
+	DefaultClient.eventsWorker = NewEventsWorker(config)
+
+	return control
+}
+
 func teardown() {
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
 	*DefaultClient.Config = defaultConfig
+	DefaultClient.beforeNotifyHandlers = nil
+	DefaultClient.beforeEventHandlers = nil
+	DefaultClient.context = newContextSync()
+	DefaultClient.eventContext = newContextSync()
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -133,7 +247,7 @@ func TestNotifyWithErrorClass(t *testing.T) {
 	}
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
 	sent_klass, _ := error_payload["class"].(string)
 
 	if !testNoticePayload(t, payload) {
@@ -158,14 +272,14 @@ func TestNotifyWithTags(t *testing.T) {
 	}
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
-	sent_tags, _ := error_payload["tags"].([]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
+	sent_tags, _ := error_payload["tags"].([]any)
 
 	if !testNoticePayload(t, payload) {
 		return
 	}
 
-	if got, want := sent_tags, []interface{}{"timeout", "http"}; !reflect.DeepEqual(got, want) {
+	if got, want := sent_tags, []any{"timeout", "http"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("Custom error class should override default. expected=%#v actual=%#v.", want, got)
 		return
 	}
@@ -183,7 +297,7 @@ func TestNotifyWithFingerprint(t *testing.T) {
 	}
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
 	sent_fingerprint, _ := error_payload["fingerprint"].(string)
 
 	if !testNoticePayload(t, payload) {
@@ -229,34 +343,34 @@ func TestNotifyWithRequest(t *testing.T) {
 
 	// Request[1] - Checks URL & query extraction
 	payload := requests[1].decodeJSON()
-	request_payload, _ := payload["request"].(map[string]interface{})
+	request_payload, _ := payload["request"].(map[string]any)
 
 	if url, _ := request_payload["url"].(string); url != reqUrl {
 		t.Errorf("Request URL should be extracted. expected=%v actual=%#v.", "/fail", url)
 		return
 	}
 
-	params, _ := request_payload["params"].(map[string]interface{})
-	values, _ := params["qKey"].([]interface{})
+	params, _ := request_payload["params"].(map[string]any)
+	values, _ := params["qKey"].([]any)
 	if len(params) != 1 || len(values) != 1 || values[0] != "qValue" {
 		t.Errorf("Request params should be extracted. expected=%v actual=%#v.", req.Form, params)
 	}
 
 	// Request[2] - Checks header & form extraction
 	payload = requests[2].decodeJSON()
-	request_payload, _ = payload["request"].(map[string]interface{})
+	request_payload, _ = payload["request"].(map[string]any)
 
 	if !testNoticePayload(t, payload) {
 		return
 	}
 
-	cgi, _ := request_payload["cgi_data"].(map[string]interface{})
+	cgi, _ := request_payload["cgi_data"].(map[string]any)
 	if len(cgi) != 1 || cgi["HTTP_ACCEPT"] != "application/test-data" {
 		t.Errorf("Request cgi_data should be extracted. expected=%v actual=%#v.", req.Header, cgi)
 	}
 
-	params, _ = request_payload["params"].(map[string]interface{})
-	values, _ = params["fKey"].([]interface{})
+	params, _ = request_payload["params"].(map[string]any)
+	values, _ = params["fKey"].([]any)
 	if len(params) != 1 || len(values) != 1 || values[0] != "fValue" {
 		t.Errorf("Request params should be extracted. expected=%v actual=%#v.", req.Form, params)
 	}
@@ -293,7 +407,7 @@ func TestNotifyWithHandler(t *testing.T) {
 	Flush()
 
 	payload := requests[0].decodeJSON()
-	error_payload, _ := payload["error"].(map[string]interface{})
+	error_payload, _ := payload["error"].(map[string]any)
 	sent_fingerprint, _ := error_payload["fingerprint"].(string)
 
 	if !testRequestCount(t, 1) {
@@ -334,13 +448,13 @@ func assertContext(t *testing.T, payload hash, expected Context) {
 	var request, context hash
 	var ok bool
 
-	request, ok = payload["request"].(map[string]interface{})
+	request, ok = payload["request"].(map[string]any)
 	if !ok {
 		t.Errorf("Missing request in payload actual=%#v.", payload)
 		return
 	}
 
-	context, ok = request["context"].(map[string]interface{})
+	context, ok = request["context"].(map[string]any)
 	if !ok {
 		t.Errorf("Missing context in request payload actual=%#v.", request)
 		return
@@ -365,7 +479,7 @@ func testRequestCount(t *testing.T, num int) bool {
 func testNoticePayload(t *testing.T, payload hash) bool {
 	for _, key := range []string{"notifier", "error", "request", "server"} {
 		switch payload[key].(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			// OK
 		default:
 			t.Errorf("Expected payload to include %v hash. expected=%#v actual=%#v", key, key, payload)
@@ -373,6 +487,800 @@ func testNoticePayload(t *testing.T, payload hash) bool {
 		}
 	}
 	return true
+}
+
+func TestEvent(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	eventData := map[string]any{
+		"message": "test message",
+		"user_id": 123,
+	}
+
+	err := Event("test_event", eventData)
+	if err != nil {
+		t.Errorf("Expected Event() to return no error. actual=%#v", err)
+	}
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 JSONL event. actual=%d lines", len(lines))
+	}
+
+	var event map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &event); err != nil {
+		t.Fatalf("Failed to parse JSONL event: %v", err)
+	}
+	if eventType, ok := event["event_type"].(string); !ok || eventType != "test_event" {
+		t.Errorf("Expected event_type 'test_event'. actual=%#v", event["event_type"])
+	}
+	if message, ok := event["message"].(string); !ok || message != "test message" {
+		t.Errorf("Expected message 'test message'. actual=%#v", event["message"])
+	}
+	ts, ok := event["ts"].(string)
+	if !ok {
+		t.Errorf("Expected ts field to be present. actual=%#v", event)
+	}
+	if _, err := time.Parse(time.RFC3339Nano, ts); err != nil {
+		t.Errorf("Expected ts to be in RFC3339Nano format. actual=%q", ts)
+	}
+}
+
+func TestEventBatching(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 2})
+
+	Event("event1", map[string]any{"data": "first"})
+
+	select {
+	case <-control:
+		t.Errorf("Expected no requests before batch size reached")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	Event("event2", map[string]any{"data": "second"})
+
+	select {
+	case req := <-control:
+		req.Response <- 201
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 batch request when batch size reached")
+	}
+}
+
+func TestEventTimeout(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 10, EventsTimeout: 50 * time.Millisecond})
+
+	Event("event1", map[string]any{"data": "first"})
+
+	select {
+	case <-control:
+		t.Errorf("Expected no immediate requests")
+	case <-time.After(25 * time.Millisecond):
+	}
+
+	select {
+	case req := <-control:
+		req.Response <- 201
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 request after timeout")
+	}
+}
+
+func TestEventContextCancellation(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	Configure(Configuration{EventsBatchSize: 10, Context: ctx})
+
+	Event("test_event", map[string]any{"data": "should be flushed"})
+
+	select {
+	case <-control:
+		t.Errorf("Expected no requests before context cancellation")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	cancel()
+
+	select {
+	case req := <-control:
+		req.Response <- 201
+		lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+		var event map[string]any
+		json.Unmarshal([]byte(lines[0]), &event)
+
+		if event["data"] != "should be flushed" {
+			t.Errorf("Expected event data 'should be flushed'. actual=%v", event["data"])
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected 1 request after context cancellation")
+	}
+}
+
+func parseEvents(body string) []map[string]any {
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	events := make([]map[string]any, len(lines))
+
+	for i, line := range lines {
+		json.Unmarshal([]byte(line), &events[i])
+	}
+
+	return events
+}
+
+func TestEventMaxQueueSize(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 10, EventsMaxQueueSize: 2})
+
+	Event("first_event", map[string]any{"data": "first"})
+	Event("second_event", map[string]any{"data": "second"})
+	Event("third_event", map[string]any{"data": "dropped"})
+
+	var events []map[string]any
+	done := make(chan struct{})
+	go func() {
+		select {
+		case req := <-control:
+			req.Response <- 201
+			events = parseEvents(string(req.Body))
+		case <-time.After(100 * time.Millisecond):
+		}
+		close(done)
+	}()
+
+	DefaultClient.eventsWorker.Flush()
+	<-done
+
+	if len(events) != 2 {
+		t.Fatalf("Expected 2 events. actual=%d", len(events))
+	}
+
+	expectedData := []string{"first", "second"}
+	for i, expected := range expectedData {
+		if events[i]["data"] != expected {
+			t.Errorf("Expected event %d data '%s'. actual=%v", i, expected, events[i]["data"])
+		}
+	}
+}
+
+func TestEventFailureRecovery(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:    2,
+		EventsMaxQueueSize: 5,
+		EventsMaxRetries:   3,
+		EventsTimeout:      50 * time.Millisecond,
+	})
+
+	Event("1", map[string]any{"data": "first"})
+	Event("2", map[string]any{"data": "second"})
+
+	req1 := <-control
+	t.Log("First attempt", string(req1.Body))
+	req1.Response <- 500
+
+	req2 := <-control
+	t.Log("Second attempt", string(req2.Body))
+	req2.Response <- 500
+
+	req3 := <-control
+	t.Log("Third attempt", string(req3.Body))
+	req3.Response <- 201
+}
+
+func TestEventQueueSizeIncludesPendingBatches(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:    2,
+		EventsMaxQueueSize: 3,
+		EventsMaxRetries:   3,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 500
+
+	Event("3", map[string]any{"data": "3"})
+	Event("4", map[string]any{"data": "4"})
+
+	time.Sleep(50 * time.Millisecond)
+
+	var events []map[string]any
+	done := make(chan struct{})
+	go func() {
+		req2 := <-control
+		req2.Response <- 201
+
+		req3 := <-control
+		events = parseEvents(string(req3.Body))
+		req3.Response <- 201
+		close(done)
+	}()
+
+	DefaultClient.eventsWorker.Flush()
+	<-done
+
+	if len(events) != 1 {
+		t.Errorf("Expected 1 event after dropping. actual=%d", len(events))
+	}
+	if events[0]["data"] != "4" {
+		t.Errorf("Expected newest event '4'. actual=%v", events[0]["data"])
+	}
+}
+
+func TestEventThrottling(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:    2,
+		EventsMaxRetries:   2,
+		EventsThrottleWait: 100 * time.Millisecond,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 429
+
+	Event("3", map[string]any{"data": "3"})
+	Event("4", map[string]any{"data": "4"})
+
+	select {
+	case <-control:
+		t.Errorf("Expected no more requests until throttle wait expires - worker should not hammer API")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	select {
+	case req2 := <-control:
+		req2.Response <- 201
+		events := parseEvents(string(req2.Body))
+		if len(events) != 2 {
+			t.Fatalf("Expected 2 events in retry after throttle. actual=%d", len(events))
+		}
+		if events[0]["data"] != "1" || events[1]["data"] != "2" {
+			t.Errorf("Expected first batch to retry after throttle. actual=%v", events)
+		}
+	case <-time.After(150 * time.Millisecond):
+		t.Fatalf("Expected retry after throttle wait expires")
+	}
+
+	select {
+	case req3 := <-control:
+		req3.Response <- 201
+		events := parseEvents(string(req3.Body))
+		if len(events) != 2 {
+			t.Fatalf("Expected 2 events queued during throttle. actual=%d", len(events))
+		}
+		if events[0]["data"] != "3" || events[1]["data"] != "4" {
+			t.Errorf("Expected events 3 and 4 to be queued (not dropped) during throttle. actual=%v", events)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("Expected events queued during throttle to be sent")
+	}
+}
+
+func TestEventMultipleBatchRetryOrdering(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{
+		EventsBatchSize:  2,
+		EventsMaxRetries: 3,
+		EventsTimeout:    100 * time.Millisecond,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 500
+
+	Event("3", map[string]any{"data": "3"})
+	Event("4", map[string]any{"data": "4"})
+
+	req2 := <-control
+	events := parseEvents(string(req2.Body))
+	if events[0]["data"] != "1" || events[1]["data"] != "2" {
+		t.Errorf("Expected first batch to retry. actual=%v", events)
+	}
+	req2.Response <- 500
+
+	req3 := <-control
+	events = parseEvents(string(req3.Body))
+	if events[0]["data"] != "1" || events[1]["data"] != "2" {
+		t.Errorf("Expected first batch to retry again. actual=%v", events)
+	}
+	req3.Response <- 201
+
+	req4 := <-control
+	events = parseEvents(string(req4.Body))
+	if len(events) != 2 {
+		t.Fatalf("Expected second batch. actual=%d events", len(events))
+	}
+	if events[0]["data"] != "3" || events[1]["data"] != "4" {
+		t.Errorf("Expected second batch after first succeeds. actual=%v", events)
+	}
+	req4.Response <- 201
+}
+
+func TestEventShutdownWithPendingRetries(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	Configure(Configuration{
+		EventsBatchSize:  2,
+		EventsMaxRetries: 3,
+		Context:          ctx,
+	})
+
+	Event("1", map[string]any{"data": "1"})
+	Event("2", map[string]any{"data": "2"})
+
+	req1 := <-control
+	req1.Response <- 500
+
+	cancel()
+
+	req2 := <-control
+	events := parseEvents(string(req2.Body))
+	if len(events) != 2 {
+		t.Fatalf("Expected 2 events in retry batch on shutdown. actual=%d", len(events))
+	}
+	if events[0]["data"] != "1" || events[1]["data"] != "2" {
+		t.Errorf("Expected failed batch to be flushed on shutdown. actual=%v", events)
+	}
+	req2.Response <- 201
+}
+
+func TestEventWithHandler(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	BeforeEvent(func(event map[string]any) error {
+		event["modified"] = true
+		return nil
+	})
+
+	Event("test_event", map[string]any{"data": "original"})
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	var event map[string]any
+	json.Unmarshal([]byte(lines[0]), &event)
+
+	if event["modified"] != true {
+		t.Errorf("Expected handler to modify event. actual=%v", event)
+	}
+	if event["data"] != "original" {
+		t.Errorf("Expected original data to be preserved. actual=%v", event["data"])
+	}
+}
+
+func TestEventWithHandlerError(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	err := fmt.Errorf("skip this event")
+	BeforeEvent(func(event map[string]any) error {
+		return err
+	})
+
+	eventErr := Event("test_event", map[string]any{"data": "test"})
+
+	if eventErr != err {
+		t.Errorf("Expected Event to return handler error. actual=%v", eventErr)
+	}
+
+	select {
+	case <-control:
+		t.Errorf("Expected no event to be sent when handler returns error")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEventWithHandlerDropped(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	BeforeEvent(func(event map[string]any) error {
+		return ErrEventDropped
+	})
+
+	eventErr := Event("test_event", map[string]any{"data": "test"})
+
+	if eventErr != nil {
+		t.Errorf("Expected Event to return nil when ErrEventDropped. actual=%v", eventErr)
+	}
+
+	select {
+	case <-control:
+		t.Errorf("Expected no event to be sent when handler returns ErrEventDropped")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestEventRetriesAfterRateLimit(t *testing.T) {
+	const throttleWait = 40 * time.Millisecond
+
+	backend := newRateLimitBackend()
+	client := New(Configuration{
+		Backend:            backend,
+		EventsBatchSize:    1,
+		EventsTimeout:      5 * time.Millisecond,
+		EventsThrottleWait: throttleWait,
+	})
+	t.Cleanup(func() {
+		client.eventsWorker.Stop()
+	})
+
+	if err := client.Event("rate_limit_test", map[string]any{"value": "foo"}); err != nil {
+		t.Fatalf("Expected Event() to enqueue without error. actual=%v", err)
+	}
+
+	first, ok := backend.waitCall(time.Second)
+	if !ok {
+		t.Fatalf("Expected first backend call when event is flushed")
+	}
+	if first.call != 1 {
+		t.Fatalf("Expected first call number to be 1. actual=%d", first.call)
+	}
+
+	second, ok := backend.waitCall(time.Second)
+	if !ok {
+		t.Fatalf("Expected retry after throttle wait")
+	}
+	if second.call != 2 {
+		t.Fatalf("Expected second call number to be 2. actual=%d", second.call)
+	}
+	if delay := second.when.Sub(first.when); delay < throttleWait {
+		t.Fatalf("Expected retry after throttle wait. delay=%v wait=%v", delay, throttleWait)
+	}
+
+	data := backend.lastEventData()
+	if data == nil {
+		t.Fatalf("Expected backend to receive event data on retry")
+	}
+	if data["value"] != "foo" {
+		t.Fatalf("Expected original event payload on retry. actual=%v", data["value"])
+	}
+}
+
+func TestEventWithContext(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	eventContext := Context{"user_id": 456, "request_id": "abc123"}
+	SetEventContext(eventContext)
+
+	eventData := map[string]any{
+		"message": "test message",
+	}
+
+	err := Event("test_event", eventData)
+	if err != nil {
+		t.Errorf("Expected Event() to return no error. actual=%#v", err)
+	}
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	var event map[string]any
+	json.Unmarshal([]byte(lines[0]), &event)
+
+	if event["user_id"] != float64(456) {
+		t.Errorf("Expected user_id from context. actual=%#v", event["user_id"])
+	}
+	if event["request_id"] != "abc123" {
+		t.Errorf("Expected request_id from context. actual=%#v", event["request_id"])
+	}
+	if event["message"] != "test message" {
+		t.Errorf("Expected message from event data. actual=%#v", event["message"])
+	}
+}
+
+func TestEventDataOverridesContext(t *testing.T) {
+	control := setupEvents(t)
+	defer teardown()
+
+	Configure(Configuration{EventsBatchSize: 1})
+
+	eventContext := Context{"user_id": 456}
+	SetEventContext(eventContext)
+
+	eventData := map[string]any{
+		"user_id": 789,
+		"message": "override test",
+	}
+
+	Event("test_event", eventData)
+
+	req := <-control
+	req.Response <- 201
+
+	lines := strings.Split(strings.TrimSpace(string(req.Body)), "\n")
+	var event map[string]any
+	json.Unmarshal([]byte(lines[0]), &event)
+
+	if event["user_id"] != float64(789) {
+		t.Errorf("Expected user_id from event data to override context. expected=789 actual=%#v", event["user_id"])
+	}
+}
+
+func TestEventDoesNotBlockDuringBatchSend(t *testing.T) {
+	sendDuration := 100 * time.Millisecond
+
+	backend := &slowBackend{
+		delay: sendDuration,
+		done:  make(chan struct{}),
+	}
+
+	Configure(Configuration{
+		Backend:             backend,
+		EventsBatchSize:     2,
+		EventsMaxQueueSize:  10,
+		EventsTimeout:       time.Second,
+	})
+	defer teardown()
+
+	Event("event1", map[string]any{"data": 1})
+	Event("event2", map[string]any{"data": 2})
+
+	<-backend.done
+
+	start := time.Now()
+	Event("event3", map[string]any{"data": 3})
+	elapsed := time.Since(start)
+
+	maxAcceptable := 10 * time.Millisecond
+	if elapsed > maxAcceptable {
+		t.Errorf("Event() blocked for %v while batch was being sent (backend delay: %v). Expected non-blocking behavior (< %v)", elapsed, sendDuration, maxAcceptable)
+	}
+}
+
+type slowBackend struct {
+	delay time.Duration
+	done  chan struct{}
+	mu    sync.Mutex
+	calls int
+}
+
+func (b *slowBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *slowBackend) Event(events []*eventPayload) error {
+	b.mu.Lock()
+	b.calls++
+	firstCall := b.calls == 1
+	b.mu.Unlock()
+
+	if firstCall {
+		b.done <- struct{}{}
+	}
+
+	time.Sleep(b.delay)
+	return nil
+}
+
+func TestEventDropLogging(t *testing.T) {
+	var logBuf strings.Builder
+	var logMu sync.Mutex
+	logger := log.New(&threadSafeWriter{w: &logBuf, mu: &logMu}, "", 0)
+
+	backend := &TestBackend{}
+	Configure(Configuration{
+		Backend:               backend,
+		Logger:                logger,
+		EventsBatchSize:       10,
+		EventsMaxQueueSize:    5,
+		EventsDropLogInterval: 100 * time.Millisecond,
+		EventsTimeout:         time.Second,
+	})
+	defer teardown()
+
+	for i := 0; i < 20; i++ {
+		Event(fmt.Sprintf("event%d", i), map[string]any{"index": i})
+	}
+
+	time.Sleep(150 * time.Millisecond)
+
+	logMu.Lock()
+	logs := logBuf.String()
+	logMu.Unlock()
+
+	dropLogCount := strings.Count(logs, "dropped")
+
+	if dropLogCount == 0 {
+		t.Errorf("Expected at least one drop log message, got none")
+	}
+
+	if dropLogCount > 2 {
+		t.Errorf("Expected consolidated drop logging (1-2 messages), got %d messages:\n%s", dropLogCount, logs)
+	}
+
+	if !strings.Contains(logs, "events worker dropped") {
+		t.Errorf("Expected consolidated drop message format. Got:\n%s", logs)
+	}
+}
+
+type threadSafeWriter struct {
+	w  *strings.Builder
+	mu *sync.Mutex
+}
+
+func (w *threadSafeWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Write(p)
+}
+
+func TestEventDropLoggingDisabled(t *testing.T) {
+	var logBuf strings.Builder
+	var logMu sync.Mutex
+	logger := log.New(&threadSafeWriter{w: &logBuf, mu: &logMu}, "", 0)
+
+	backend := &TestBackend{}
+	Configure(Configuration{
+		Backend:               backend,
+		Logger:                logger,
+		EventsBatchSize:       10,
+		EventsMaxQueueSize:    5,
+		EventsDropLogInterval: 0,
+		EventsTimeout:         time.Second,
+	})
+	defer teardown()
+
+	for i := 0; i < 20; i++ {
+		Event(fmt.Sprintf("event%d", i), map[string]any{"index": i})
+	}
+
+	time.Sleep(150 * time.Millisecond)
+
+	logMu.Lock()
+	logs := logBuf.String()
+	logMu.Unlock()
+
+	dropLogCount := strings.Count(logs, "dropped")
+
+	if dropLogCount > 0 {
+		t.Errorf("Expected no drop logging when interval is 0, got %d messages:\n%s", dropLogCount, logs)
+	}
+}
+
+func TestEventFlushBlocksUntilDelivery(t *testing.T) {
+	backend := &trackingBackend{
+		delay: 50 * time.Millisecond,
+	}
+
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
+
+	config := newConfig(Configuration{
+		Backend:         backend,
+		EventsBatchSize: 1,
+		EventsTimeout:   time.Second,
+	})
+	*DefaultClient.Config = *config
+	DefaultClient.eventsWorker = NewEventsWorker(config)
+	defer teardown()
+
+	Event("test_event", map[string]any{"data": "value"})
+
+	Flush()
+
+	backend.mu.Lock()
+	delivered := backend.delivered
+	backend.mu.Unlock()
+
+	if !delivered {
+		t.Error("Expected Flush() to block until event was delivered, but it returned before delivery completed")
+	}
+}
+
+type trackingBackend struct {
+	delay     time.Duration
+	mu        sync.Mutex
+	delivered bool
+}
+
+func (b *trackingBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *trackingBackend) Event(events []*eventPayload) error {
+	time.Sleep(b.delay)
+	b.mu.Lock()
+	b.delivered = true
+	b.mu.Unlock()
+	return nil
+}
+
+func TestEventDoesNotBlockWhenQueueFull(t *testing.T) {
+	backend := &blockingBackend{
+		unblock: make(chan struct{}),
+	}
+
+	if DefaultClient.eventsWorker != nil {
+		DefaultClient.eventsWorker.Stop()
+	}
+
+	config := newConfig(Configuration{
+		Backend:            backend,
+		EventsBatchSize:    1,
+		EventsMaxQueueSize: 2,
+		EventsTimeout:      time.Second,
+	})
+	*DefaultClient.Config = *config
+	DefaultClient.eventsWorker = NewEventsWorker(config)
+	defer teardown()
+
+	// Send events to fill the queue (batch size 1 triggers immediate send, which blocks)
+	Event("event1", map[string]any{"data": 1})
+	Event("event2", map[string]any{"data": 2})
+	Event("event3", map[string]any{"data": 3})
+
+	// This event should not block even though queue is full
+	start := time.Now()
+	Event("event4", map[string]any{"data": 4})
+	elapsed := time.Since(start)
+
+	// Unblock the backend so test can clean up
+	close(backend.unblock)
+
+	maxAcceptable := 10 * time.Millisecond
+	if elapsed > maxAcceptable {
+		t.Errorf("Event() blocked for %v when queue was full. Expected non-blocking behavior (< %v)", elapsed, maxAcceptable)
+	}
+}
+
+type blockingBackend struct {
+	unblock chan struct{}
+}
+
+func (b *blockingBackend) Notify(_ Feature, _ Payload) error {
+	return nil
+}
+
+func (b *blockingBackend) Event(events []*eventPayload) error {
+	<-b.unblock
+	return nil
 }
 
 func TestHandlerCallsHandler(t *testing.T) {
@@ -385,10 +1293,4 @@ func TestHandlerCallsHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	mockHandler.AssertCalled(t, "ServeHTTP")
-}
-
-func assertMethod(t *testing.T, r *http.Request, method string) {
-	if r.Method != method {
-		t.Errorf("Unexpected request method. actual=%#v expected=%#v", r.Method, method)
-	}
 }

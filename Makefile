@@ -3,9 +3,7 @@ all: test
 prepare:
 	# needed for `make fmt`
 	go get golang.org/x/tools/cmd/goimports
-	# linters
-	go get github.com/alecthomas/gometalinter
-	gometalinter --install
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	# needed for `make cover`
 	go get golang.org/x/tools/cmd/cover
 	@echo Now you should be ready to run "make"
@@ -18,7 +16,7 @@ fmt:
 	find . -name "*.go" -exec goimports -w {} \;
 
 lint:
-	gometalinter
+	golangci-lint run
 
 cover:
 	go test -cover -coverprofile cover.out

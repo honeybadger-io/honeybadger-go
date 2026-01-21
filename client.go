@@ -1,6 +1,7 @@
 package honeybadger
 
 import (
+	"errors"
 	"net/http"
 )
 
@@ -14,22 +15,38 @@ type Payload interface {
 // custom implementation may be configured by the user.
 type Backend interface {
 	Notify(feature Feature, payload Payload) error
+	Event(events []*eventPayload) error
 }
 
+var ErrEventDropped = errors.New("event dropped by handler")
+
 type noticeHandler func(*Notice) error
+type eventHandler func(map[string]any) error
 
 // Client is the manager for interacting with the Honeybadger service. It holds
 // the configuration and implements the public API.
 type Client struct {
 	Config               *Configuration
 	context              *contextSync
+	eventContext         *contextSync
 	worker               worker
 	beforeNotifyHandlers []noticeHandler
+	eventsWorker         *EventsWorker
+	beforeEventHandlers  []eventHandler
+}
+
+func eventsConfigChanged(config *Configuration) bool {
+	return config.EventsBatchSize > 0 || config.EventsTimeout > 0 || config.EventsMaxQueueSize > 0 || config.EventsMaxRetries > 0 || config.EventsThrottleWait > 0 || config.EventsDropLogInterval > 0 || config.Backend != nil
 }
 
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
 	client.Config.update(&config)
+
+	if eventsConfigChanged(&config) && client.eventsWorker != nil {
+		client.eventsWorker.Stop()
+		client.eventsWorker = NewEventsWorker(client.Config)
+	}
 }
 
 // SetContext updates the client context with supplied context.
@@ -37,9 +54,27 @@ func (client *Client) SetContext(context Context) {
 	client.context.Update(context)
 }
 
+// ClearContext clears all context data.
+func (client *Client) ClearContext() {
+	client.context.Clear()
+}
+
+// SetEventContext updates the client event context with supplied context.
+func (client *Client) SetEventContext(context Context) {
+	client.eventContext.Update(context)
+}
+
+// ClearEventContext clears all event context data.
+func (client *Client) ClearEventContext() {
+	client.eventContext.Clear()
+}
+
 // Flush blocks until the worker has processed its queue.
 func (client *Client) Flush() {
 	client.worker.Flush()
+	if client.eventsWorker != nil {
+		client.eventsWorker.Flush()
+	}
 }
 
 // BeforeNotify adds a callback function which is run before a notice is
@@ -47,6 +82,10 @@ func (client *Client) Flush() {
 // will be skipped, otherwise it will be sent.
 func (client *Client) BeforeNotify(handler func(notice *Notice) error) {
 	client.beforeNotifyHandlers = append(client.beforeNotifyHandlers, handler)
+}
+
+func (client *Client) BeforeEvent(handler func(event map[string]any) error) {
+	client.beforeEventHandlers = append(client.beforeEventHandlers, handler)
 }
 
 // Notify reports the error err to the Honeybadger service.
@@ -76,6 +115,29 @@ func (client *Client) Notify(err interface{}, extra ...interface{}) (string, err
 	}
 
 	return notice.Token, nil
+}
+
+func (client *Client) Event(eventType string, eventData map[string]any) error {
+	client.eventContext.RLock()
+	event := newEventPayload(eventType, client.eventContext.internal, eventData)
+	client.eventContext.RUnlock()
+
+	for _, handler := range client.beforeEventHandlers {
+		err := handler(event.data)
+
+		if err == ErrEventDropped {
+			return nil
+		} else if err != nil {
+			return err
+		}
+	}
+
+	if client.Config.Sync {
+		return client.Config.Backend.Event([]*eventPayload{event})
+	}
+
+	client.eventsWorker.Push(event)
+	return nil
 }
 
 // Monitor automatically reports panics which occur in the function it's called
@@ -110,11 +172,14 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
+	eventsWorker := NewEventsWorker(config)
 
 	client := Client{
-		Config:  config,
-		worker:  worker,
-		context: newContextSync(),
+		Config:       config,
+		worker:       worker,
+		context:      newContextSync(),
+		eventContext: newContextSync(),
+		eventsWorker: eventsWorker,
 	}
 
 	return &client

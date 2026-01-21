@@ -18,3 +18,8 @@ func NewNullBackend() Backend {
 func (*nullBackend) Notify(_ Feature, _ Payload) error {
 	return nil
 }
+
+// Event swallows events, does nothing, and returns no error.
+func (*nullBackend) Event(_ []*eventPayload) error {
+	return nil
+}

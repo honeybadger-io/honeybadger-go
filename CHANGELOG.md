@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. See [Keep a
 CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.0] - Unreleased
+
+### Added
+
+- Honeybadger Insights Events support via `honeybadger.Event()` for sending custom events with automatic batching, retries, and throttling
+- Event context management with `SetEventContext()` and `ClearEventContext()`
+- `ClearContext()` to clear error notification context
+- `BeforeEvent()` callbacks for modifying or filtering events before sending
+- `slog` handler integration (`github.com/honeybadger-io/honeybadger-go/slog`)
+- `zerolog` adapter (`github.com/honeybadger-io/honeybadger-go/zerolog`)
+- Configuration options for events: `EventsBatchSize`, `EventsTimeout`, `EventsMaxQueueSize`, `EventsMaxRetries`, `EventsThrottleWait`
+
 ## [0.8.0](https://github.com/honeybadger-io/honeybadger-go/compare/v0.7.0...v0.8.0) (2024-09-16)
 
 

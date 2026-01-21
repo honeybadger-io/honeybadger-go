@@ -7,7 +7,7 @@ import (
 )
 
 // VERSION defines the version of the honeybadger package.
-const VERSION = "0.7.0"
+const VERSION = "0.9.0"
 
 var (
 	// client is a pre-defined "global" client.
@@ -18,6 +18,9 @@ var (
 
 	// Notices is the feature for sending error reports.
 	Notices = Feature{"notices"}
+
+	// Events is the feature for sending events to Insights.
+	Events = Feature{"events"}
 )
 
 // Feature references a resource provided by the API service. Its Endpoint maps
@@ -59,6 +62,22 @@ func SetContext(c Context) {
 	DefaultClient.SetContext(c)
 }
 
+// ClearContext clears all context data from the global client.
+func ClearContext() {
+	DefaultClient.ClearContext()
+}
+
+// SetEventContext sets context data that will be merged into all events sent
+// via Event(). Data passed directly to Event() takes precedence over context.
+func SetEventContext(c Context) {
+	DefaultClient.SetEventContext(c)
+}
+
+// ClearEventContext clears all event context data from the global client.
+func ClearEventContext() {
+	DefaultClient.ClearEventContext()
+}
+
 // Notify reports the error err to the Honeybadger service.
 //
 // The first argument err may be an error, a string, or any other type in which
@@ -70,13 +89,25 @@ func Notify(err interface{}, extra ...interface{}) (string, error) {
 	return DefaultClient.Notify(newError(err, 2), extra...)
 }
 
+// Event sends a custom event to Honeybadger Insights. For example:
+//
+//	honeybadger.Event("user_login", map[string]any{
+//		"user_id": 123,
+//		"email":   "user@example.com",
+//	})
+func Event(eventType string, eventData map[string]any) error {
+	return DefaultClient.Event(eventType, eventData)
+}
+
 // Monitor is used to automatically notify Honeybadger service of panics which
 // happen inside the current function. In order to monitor for panics, defer a
 // call to Monitor. For example:
-// 	func main {
-// 		defer honeybadger.Monitor()
-// 		// Do risky stuff...
-// 	}
+//
+//	func main {
+//		defer honeybadger.Monitor()
+//		// Do risky stuff...
+//	}
+//
 // The Monitor function re-panics after the notification has been sent, so it's
 // still up to the user to recover from panics if desired.
 func Monitor() {
@@ -104,4 +135,11 @@ func Handler(h http.Handler) http.Handler {
 // will be skipped, otherwise it will be sent.
 func BeforeNotify(handler func(notice *Notice) error) {
 	DefaultClient.BeforeNotify(handler)
+}
+
+// BeforeEvent adds a callback function which is run before an event is
+// sent to Honeybadger. If any function returns an error the event
+// will be dropped, otherwise it will be sent.
+func BeforeEvent(handler func(event map[string]any) error) {
+	DefaultClient.BeforeEvent(handler)
 }
