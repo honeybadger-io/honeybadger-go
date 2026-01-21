@@ -3,7 +3,7 @@ module github.com/honeybadger-io/honeybadger-go/zerolog
 go 1.24.0
 
 require (
-	github.com/honeybadger-io/honeybadger-go v0.8.1-0.20251117195949-88d06c1beac2
+	github.com/honeybadger-io/honeybadger-go v0.9.0
 	github.com/rs/zerolog v1.33.0
 )
 
