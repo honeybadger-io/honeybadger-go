@@ -67,6 +67,8 @@ func ClearContext() {
 	DefaultClient.ClearContext()
 }
 
+// SetEventContext sets context data that will be merged into all events sent
+// via Event(). Data passed directly to Event() takes precedence over context.
 func SetEventContext(c Context) {
 	DefaultClient.SetEventContext(c)
 }
@@ -87,6 +89,12 @@ func Notify(err interface{}, extra ...interface{}) (string, error) {
 	return DefaultClient.Notify(newError(err, 2), extra...)
 }
 
+// Event sends a custom event to Honeybadger Insights. For example:
+//
+//	honeybadger.Event("user_login", map[string]any{
+//		"user_id": 123,
+//		"email":   "user@example.com",
+//	})
 func Event(eventType string, eventData map[string]any) error {
 	return DefaultClient.Event(eventType, eventData)
 }
