@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. See [Keep a
 CHANGELOG](http://keepachangelog.com/) for how to update this file. This project
 adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.9.0](https://github.com/honeybadger-io/honeybadger-go/compare/v0.8.0...v0.9.0) (2026-01-21)
+
+
+### Features
+
+* **insights:** add events support ([#56](https://github.com/honeybadger-io/honeybadger-go/issues/56)) ([32060ad](https://github.com/honeybadger-io/honeybadger-go/commit/32060ad40461b4cbcfe7b8d7b1b2ce2c347efbbc))
+
 ## [0.9.0] - Unreleased
 
 ### Added
